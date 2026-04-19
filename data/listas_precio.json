@@ -4,782 +4,104 @@
     "nombre": "Lista General",
     "precios": [
       {
-        "producto_id": "p200",
-        "precio": 2800
-      },
-      {
-        "producto_id": "p201",
-        "precio": 2800
-      },
-      {
-        "producto_id": "p100",
-        "precio": 4800
-      },
-      {
-        "producto_id": "p101",
-        "precio": 4800
-      },
-      {
-        "producto_id": "p943",
-        "precio": 3200
-      },
-      {
-        "producto_id": "p146",
-        "precio": 3200
-      },
-      {
-        "producto_id": "p941",
-        "precio": 3200
-      },
-      {
-        "producto_id": "p147",
-        "precio": 3200
-      },
-      {
-        "producto_id": "p310",
+        "producto_id": "p311",
         "precio": 8500
       },
       {
-        "producto_id": "p311",
-        "precio": 6000
+        "producto_id": "p312",
+        "precio": 8500
+      },
+      {
+        "producto_id": "p431",
+        "precio": 8500
+      },
+      {
+        "producto_id": "p321",
+        "precio": 9500
+      },
+      {
+        "producto_id": "p361",
+        "precio": 9500
+      },
+      {
+        "producto_id": "p340",
+        "precio": 9500
+      },
+      {
+        "producto_id": "p301",
+        "precio": 11000
+      },
+      {
+        "producto_id": "p341",
+        "precio": 11000
       },
       {
         "producto_id": "p400",
-        "precio": 6000
+        "precio": 11000
+      },
+      {
+        "producto_id": "p351",
+        "precio": 11000
+      },
+      {
+        "producto_id": "p402",
+        "precio": 13000
+      },
+      {
+        "producto_id": "p421",
+        "precio": 13000
+      },
+      {
+        "producto_id": "p411",
+        "precio": 13000
       },
       {
         "producto_id": "p302",
         "precio": 14500
       },
       {
-        "producto_id": "p351",
-        "precio": 6000
-      },
-      {
-        "producto_id": "p340",
-        "precio": 6000
-      },
-      {
-        "producto_id": "p301",
-        "precio": 6000
-      },
-      {
-        "producto_id": "p361",
-        "precio": 6000
-      },
-      {
-        "producto_id": "p341",
-        "precio": 6000
-      },
-      {
-        "producto_id": "p312",
-        "precio": 6000
-      },
-      {
-        "producto_id": "p411",
-        "precio": 6000
-      },
-      {
-        "producto_id": "p421",
-        "precio": 6000
-      },
-      {
-        "producto_id": "p431",
-        "precio": 6000
-      },
-      {
-        "producto_id": "p402",
-        "precio": 6000
-      },
-      {
-        "producto_id": "p321",
-        "precio": 6000
-      }
-    ]
-  },
-  {
-    "id": "lp_aramark",
-    "nombre": "ARAMARK",
-    "precios": [
-      {
-        "producto_id": "p200",
-        "precio": 2520.0
-      },
-      {
-        "producto_id": "p201",
-        "precio": 2520.0
-      },
-      {
-        "producto_id": "p100",
-        "precio": 4320.0
-      },
-      {
-        "producto_id": "p101",
-        "precio": 4320.0
-      },
-      {
         "producto_id": "p943",
-        "precio": 2880.0
+        "precio": 3200
       },
       {
         "producto_id": "p146",
-        "precio": 2880.0
+        "precio": 3200
       },
       {
         "producto_id": "p941",
-        "precio": 2880.0
+        "precio": 3200
       },
       {
         "producto_id": "p147",
-        "precio": 2880.0
-      },
-      {
-        "producto_id": "p310",
-        "precio": 7650.0
-      },
-      {
-        "producto_id": "p311",
-        "precio": 5400.0
-      },
-      {
-        "producto_id": "p400",
-        "precio": 5400.0
-      },
-      {
-        "producto_id": "p302",
-        "precio": 13050.0
-      },
-      {
-        "producto_id": "p351",
-        "precio": 5400.0
-      },
-      {
-        "producto_id": "p340",
-        "precio": 5400.0
-      },
-      {
-        "producto_id": "p301",
-        "precio": 5400.0
-      },
-      {
-        "producto_id": "p361",
-        "precio": 5400.0
-      },
-      {
-        "producto_id": "p341",
-        "precio": 5400.0
-      },
-      {
-        "producto_id": "p312",
-        "precio": 5400.0
-      },
-      {
-        "producto_id": "p411",
-        "precio": 5400.0
-      },
-      {
-        "producto_id": "p421",
-        "precio": 5400.0
-      },
-      {
-        "producto_id": "p431",
-        "precio": 5400.0
-      },
-      {
-        "producto_id": "p402",
-        "precio": 5400.0
-      },
-      {
-        "producto_id": "p321",
-        "precio": 5400.0
-      }
-    ]
-  },
-  {
-    "id": "lp_comedores",
-    "nombre": "COMEDORES",
-    "precios": [
-      {
-        "producto_id": "p200",
-        "precio": 2604.0
-      },
-      {
-        "producto_id": "p201",
-        "precio": 2604.0
+        "precio": 3200
       },
       {
         "producto_id": "p100",
-        "precio": 4464.0
+        "precio": 4800
       },
       {
         "producto_id": "p101",
-        "precio": 4464.0
+        "precio": 4800
       },
-      {
-        "producto_id": "p943",
-        "precio": 2976.0
-      },
-      {
-        "producto_id": "p146",
-        "precio": 2976.0
-      },
-      {
-        "producto_id": "p941",
-        "precio": 2976.0
-      },
-      {
-        "producto_id": "p147",
-        "precio": 2976.0
-      },
-      {
-        "producto_id": "p310",
-        "precio": 7905.0
-      },
-      {
-        "producto_id": "p311",
-        "precio": 5580.0
-      },
-      {
-        "producto_id": "p400",
-        "precio": 5580.0
-      },
-      {
-        "producto_id": "p302",
-        "precio": 13485.0
-      },
-      {
-        "producto_id": "p351",
-        "precio": 5580.0
-      },
-      {
-        "producto_id": "p340",
-        "precio": 5580.0
-      },
-      {
-        "producto_id": "p301",
-        "precio": 5580.0
-      },
-      {
-        "producto_id": "p361",
-        "precio": 5580.0
-      },
-      {
-        "producto_id": "p341",
-        "precio": 5580.0
-      },
-      {
-        "producto_id": "p312",
-        "precio": 5580.0
-      },
-      {
-        "producto_id": "p411",
-        "precio": 5580.0
-      },
-      {
-        "producto_id": "p421",
-        "precio": 5580.0
-      },
-      {
-        "producto_id": "p431",
-        "precio": 5580.0
-      },
-      {
-        "producto_id": "p402",
-        "precio": 5580.0
-      },
-      {
-        "producto_id": "p321",
-        "precio": 5580.0
-      }
-    ]
-  },
-  {
-    "id": "lp_comedores_nuevos",
-    "nombre": "COMEDORES NUEVOS",
-    "precios": [
       {
         "producto_id": "p200",
-        "precio": 2688.0
+        "precio": 2800
       },
       {
         "producto_id": "p201",
-        "precio": 2688.0
-      },
-      {
-        "producto_id": "p100",
-        "precio": 4608.0
-      },
-      {
-        "producto_id": "p101",
-        "precio": 4608.0
-      },
-      {
-        "producto_id": "p943",
-        "precio": 3072.0
-      },
-      {
-        "producto_id": "p146",
-        "precio": 3072.0
-      },
-      {
-        "producto_id": "p941",
-        "precio": 3072.0
-      },
-      {
-        "producto_id": "p147",
-        "precio": 3072.0
+        "precio": 2800
       },
       {
         "producto_id": "p310",
-        "precio": 8160.0
+        "precio": 8500
       },
       {
-        "producto_id": "p311",
-        "precio": 5760.0
+        "producto_id": "p500",
+        "precio": 6000
       },
       {
-        "producto_id": "p400",
-        "precio": 5760.0
-      },
-      {
-        "producto_id": "p302",
-        "precio": 13920.0
-      },
-      {
-        "producto_id": "p351",
-        "precio": 5760.0
-      },
-      {
-        "producto_id": "p340",
-        "precio": 5760.0
-      },
-      {
-        "producto_id": "p301",
-        "precio": 5760.0
-      },
-      {
-        "producto_id": "p361",
-        "precio": 5760.0
-      },
-      {
-        "producto_id": "p341",
-        "precio": 5760.0
-      },
-      {
-        "producto_id": "p312",
-        "precio": 5760.0
-      },
-      {
-        "producto_id": "p411",
-        "precio": 5760.0
-      },
-      {
-        "producto_id": "p421",
-        "precio": 5760.0
-      },
-      {
-        "producto_id": "p431",
-        "precio": 5760.0
-      },
-      {
-        "producto_id": "p402",
-        "precio": 5760.0
-      },
-      {
-        "producto_id": "p321",
-        "precio": 5760.0
-      }
-    ]
-  },
-  {
-    "id": "lp_cook_master",
-    "nombre": "COOK MASTER",
-    "precios": [
-      {
-        "producto_id": "p200",
-        "precio": 2772.0
-      },
-      {
-        "producto_id": "p201",
-        "precio": 2772.0
-      },
-      {
-        "producto_id": "p100",
-        "precio": 4752.0
-      },
-      {
-        "producto_id": "p101",
-        "precio": 4752.0
-      },
-      {
-        "producto_id": "p943",
-        "precio": 3168.0
-      },
-      {
-        "producto_id": "p146",
-        "precio": 3168.0
-      },
-      {
-        "producto_id": "p941",
-        "precio": 3168.0
-      },
-      {
-        "producto_id": "p147",
-        "precio": 3168.0
-      },
-      {
-        "producto_id": "p310",
-        "precio": 8415.0
-      },
-      {
-        "producto_id": "p311",
-        "precio": 5940.0
-      },
-      {
-        "producto_id": "p400",
-        "precio": 5940.0
-      },
-      {
-        "producto_id": "p302",
-        "precio": 14355.0
-      },
-      {
-        "producto_id": "p351",
-        "precio": 5940.0
-      },
-      {
-        "producto_id": "p340",
-        "precio": 5940.0
-      },
-      {
-        "producto_id": "p301",
-        "precio": 5940.0
-      },
-      {
-        "producto_id": "p361",
-        "precio": 5940.0
-      },
-      {
-        "producto_id": "p341",
-        "precio": 5940.0
-      },
-      {
-        "producto_id": "p312",
-        "precio": 5940.0
-      },
-      {
-        "producto_id": "p411",
-        "precio": 5940.0
-      },
-      {
-        "producto_id": "p421",
-        "precio": 5940.0
-      },
-      {
-        "producto_id": "p431",
-        "precio": 5940.0
-      },
-      {
-        "producto_id": "p402",
-        "precio": 5940.0
-      },
-      {
-        "producto_id": "p321",
-        "precio": 5940.0
-      }
-    ]
-  },
-  {
-    "id": "lp_food_service",
-    "nombre": "FOOD SERVICE",
-    "precios": [
-      {
-        "producto_id": "p200",
-        "precio": 2856.0
-      },
-      {
-        "producto_id": "p201",
-        "precio": 2856.0
-      },
-      {
-        "producto_id": "p100",
-        "precio": 4896.0
-      },
-      {
-        "producto_id": "p101",
-        "precio": 4896.0
-      },
-      {
-        "producto_id": "p943",
-        "precio": 3264.0
-      },
-      {
-        "producto_id": "p146",
-        "precio": 3264.0
-      },
-      {
-        "producto_id": "p941",
-        "precio": 3264.0
-      },
-      {
-        "producto_id": "p147",
-        "precio": 3264.0
-      },
-      {
-        "producto_id": "p310",
-        "precio": 8670.0
-      },
-      {
-        "producto_id": "p311",
-        "precio": 6120.0
-      },
-      {
-        "producto_id": "p400",
-        "precio": 6120.0
-      },
-      {
-        "producto_id": "p302",
-        "precio": 14790.0
-      },
-      {
-        "producto_id": "p351",
-        "precio": 6120.0
-      },
-      {
-        "producto_id": "p340",
-        "precio": 6120.0
-      },
-      {
-        "producto_id": "p301",
-        "precio": 6120.0
-      },
-      {
-        "producto_id": "p361",
-        "precio": 6120.0
-      },
-      {
-        "producto_id": "p341",
-        "precio": 6120.0
-      },
-      {
-        "producto_id": "p312",
-        "precio": 6120.0
-      },
-      {
-        "producto_id": "p411",
-        "precio": 6120.0
-      },
-      {
-        "producto_id": "p421",
-        "precio": 6120.0
-      },
-      {
-        "producto_id": "p431",
-        "precio": 6120.0
-      },
-      {
-        "producto_id": "p402",
-        "precio": 6120.0
-      },
-      {
-        "producto_id": "p321",
-        "precio": 6120.0
-      }
-    ]
-  },
-  {
-    "id": "lp_grupo_l_servicios_atlanticos",
-    "nombre": "GRUPO L - SERVICIOS ATLANTICOS",
-    "precios": [
-      {
-        "producto_id": "p200",
-        "precio": 2940.0
-      },
-      {
-        "producto_id": "p201",
-        "precio": 2940.0
-      },
-      {
-        "producto_id": "p100",
-        "precio": 5040.0
-      },
-      {
-        "producto_id": "p101",
-        "precio": 5040.0
-      },
-      {
-        "producto_id": "p943",
-        "precio": 3360.0
-      },
-      {
-        "producto_id": "p146",
-        "precio": 3360.0
-      },
-      {
-        "producto_id": "p941",
-        "precio": 3360.0
-      },
-      {
-        "producto_id": "p147",
-        "precio": 3360.0
-      },
-      {
-        "producto_id": "p310",
-        "precio": 8925.0
-      },
-      {
-        "producto_id": "p311",
-        "precio": 6300.0
-      },
-      {
-        "producto_id": "p400",
-        "precio": 6300.0
-      },
-      {
-        "producto_id": "p302",
-        "precio": 15225.0
-      },
-      {
-        "producto_id": "p351",
-        "precio": 6300.0
-      },
-      {
-        "producto_id": "p340",
-        "precio": 6300.0
-      },
-      {
-        "producto_id": "p301",
-        "precio": 6300.0
-      },
-      {
-        "producto_id": "p361",
-        "precio": 6300.0
-      },
-      {
-        "producto_id": "p341",
-        "precio": 6300.0
-      },
-      {
-        "producto_id": "p312",
-        "precio": 6300.0
-      },
-      {
-        "producto_id": "p411",
-        "precio": 6300.0
-      },
-      {
-        "producto_id": "p421",
-        "precio": 6300.0
-      },
-      {
-        "producto_id": "p431",
-        "precio": 6300.0
-      },
-      {
-        "producto_id": "p402",
-        "precio": 6300.0
-      },
-      {
-        "producto_id": "p321",
-        "precio": 6300.0
-      }
-    ]
-  },
-  {
-    "id": "lp_south_management_y_sodexo",
-    "nombre": "SOUTH MANAGEMENT Y SODEXO",
-    "precios": [
-      {
-        "producto_id": "p200",
-        "precio": 3024.0
-      },
-      {
-        "producto_id": "p201",
-        "precio": 3024.0
-      },
-      {
-        "producto_id": "p100",
-        "precio": 5184.0
-      },
-      {
-        "producto_id": "p101",
-        "precio": 5184.0
-      },
-      {
-        "producto_id": "p943",
-        "precio": 3456.0
-      },
-      {
-        "producto_id": "p146",
-        "precio": 3456.0
-      },
-      {
-        "producto_id": "p941",
-        "precio": 3456.0
-      },
-      {
-        "producto_id": "p147",
-        "precio": 3456.0
-      },
-      {
-        "producto_id": "p310",
-        "precio": 9180.0
-      },
-      {
-        "producto_id": "p311",
-        "precio": 6480.0
-      },
-      {
-        "producto_id": "p400",
-        "precio": 6480.0
-      },
-      {
-        "producto_id": "p302",
-        "precio": 15660.0
-      },
-      {
-        "producto_id": "p351",
-        "precio": 6480.0
-      },
-      {
-        "producto_id": "p340",
-        "precio": 6480.0
-      },
-      {
-        "producto_id": "p301",
-        "precio": 6480.0
-      },
-      {
-        "producto_id": "p361",
-        "precio": 6480.0
-      },
-      {
-        "producto_id": "p341",
-        "precio": 6480.0
-      },
-      {
-        "producto_id": "p312",
-        "precio": 6480.0
-      },
-      {
-        "producto_id": "p411",
-        "precio": 6480.0
-      },
-      {
-        "producto_id": "p421",
-        "precio": 6480.0
-      },
-      {
-        "producto_id": "p431",
-        "precio": 6480.0
-      },
-      {
-        "producto_id": "p402",
-        "precio": 6480.0
-      },
-      {
-        "producto_id": "p321",
-        "precio": 6480.0
+        "producto_id": "p501",
+        "precio": 6000
       }
     ]
   }

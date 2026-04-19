@@ -169,7 +169,7 @@ Vercel Functions ────────→┤
 
 ## Próximos pasos / Roadmap
 
-- [ ] Integración con ERP (Contabilium API) para saldos CC en tiempo real
+- [ ] Integración con ERP para saldos CC en tiempo real
 - [ ] Exportación del pedido a PDF con el formato original de la empresa
 - [ ] Notificación por WhatsApp / Email cuando admin aprueba pedido
 - [ ] Módulo de productos en promoción
