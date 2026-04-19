@@ -1,13 +1,9 @@
 'use client';
-
-import AppShell from '@/components/AppShell';
-import DetallePedido from '@/components/DetallePedido';
-
-// Página de detalle de un pedido específico
-export default function DetallePedidoPage() {
-  return (
-    <AppShell>
-      <DetallePedido />
-    </AppShell>
-  );
+import { useRouter, useParams } from 'next/navigation';
+import { useEffect } from 'react';
+export default function Legacy() {
+  const r = useRouter();
+  const p = useParams();
+  useEffect(() => { r.replace(`/vendedor/pedido/${p.id}`); }, [r, p.id]);
+  return null;
 }

@@ -9,7 +9,7 @@ import PanelValidaciones from './PanelValidaciones';
 
 // Formulario de pedido — basado en el template real "NOTA DE PEDIDO"
 // Secciones: Datos, Cliente, Transporte, Productos (con cajas/kg), Notas
-export default function FormularioPedido() {
+export default function FormularioPedido({ redirectBase = '/pedidos' }: { redirectBase?: string }) {
   const { vendedor } = useAuth();
   const router = useRouter();
 
@@ -322,7 +322,7 @@ export default function FormularioPedido() {
       });
       const data = await res.json();
       if (data.ok) {
-        router.push(`/pedidos/${data.pedido.id}?nuevo=true`);
+        router.push(`${redirectBase}/${data.pedido.id}?nuevo=true`);
       } else {
         alert('Error al guardar el pedido');
       }

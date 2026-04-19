@@ -1,13 +1,9 @@
 'use client';
-
-import AppShell from '@/components/AppShell';
-import ListadoPedidos from '@/components/ListadoPedidos';
-
-// Página de listado de pedidos del vendedor
-export default function PedidosPage() {
-  return (
-    <AppShell>
-      <ListadoPedidos />
-    </AppShell>
-  );
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+// Ruta legacy → redirige a /vendedor
+export default function Legacy() {
+  const r = useRouter();
+  useEffect(() => { r.replace('/vendedor'); }, [r]);
+  return null;
 }

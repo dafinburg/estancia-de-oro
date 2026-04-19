@@ -8,7 +8,7 @@ import Link from 'next/link';
 
 // Componente de detalle de un pedido
 // Muestra toda la información y permite imprimir/exportar a PDF
-export default function DetallePedido() {
+export default function DetallePedido({ backHref = '/vendedor', newHref = '/vendedor/nuevo' }: { backHref?: string; newHref?: string }) {
   const params = useParams();
   const searchParams = useSearchParams();
   const esNuevo = searchParams.get('nuevo') === 'true';
@@ -51,7 +51,7 @@ export default function DetallePedido() {
     return (
       <div className="max-w-4xl mx-auto p-6 text-center">
         <h2 className="text-xl font-bold text-gray-800 mb-2">Pedido no encontrado</h2>
-        <Link href="/pedidos" className="text-verde-oscuro hover:underline">Volver a mis pedidos</Link>
+        <Link href={backHref} className="text-verde-oscuro hover:underline">Volver a mis pedidos</Link>
       </div>
     );
   }
@@ -182,10 +182,10 @@ export default function DetallePedido() {
 
       {/* Navegación */}
       <div className="flex justify-between no-print">
-        <Link href="/pedidos" className="text-verde-oscuro hover:underline text-sm font-medium">
+        <Link href={backHref} className="text-verde-oscuro hover:underline text-sm font-medium">
           &larr; Volver a mis pedidos
         </Link>
-        <Link href="/pedidos/nuevo" className="bg-verde-oscuro text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-verde-claro transition-colors">
+        <Link href={newHref} className="bg-verde-oscuro text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-verde-claro transition-colors">
           Nuevo pedido
         </Link>
       </div>

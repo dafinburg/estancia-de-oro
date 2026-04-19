@@ -8,7 +8,7 @@ import Link from 'next/link';
 
 // Componente de listado de pedidos del vendedor logueado
 // Permite filtrar por estado y ver detalle de cada pedido
-export default function ListadoPedidos() {
+export default function ListadoPedidos({ basePath = '/pedidos' }: { basePath?: string }) {
   const { vendedor } = useAuth();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +58,7 @@ export default function ListadoPedidos() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-2xl font-bold text-verde-oscuro">Mis Pedidos</h2>
         <Link
-          href="/pedidos/nuevo"
+          href="/vendedor/nuevo"
           className="bg-verde-oscuro text-white px-4 py-2 rounded-lg font-medium hover:bg-verde-claro transition-colors text-sm"
         >
           + Nuevo Pedido
@@ -89,7 +89,7 @@ export default function ListadoPedidos() {
       {pedidosOrdenados.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border">
           <p className="text-gray-500 text-lg">No hay pedidos{filtroEstado !== 'todos' ? ` con estado "${filtroEstado}"` : ''}</p>
-          <Link href="/pedidos/nuevo" className="text-verde-oscuro font-medium hover:underline mt-2 inline-block">
+          <Link href="/vendedor/nuevo" className="text-verde-oscuro font-medium hover:underline mt-2 inline-block">
             Crear primer pedido
           </Link>
         </div>
@@ -121,7 +121,7 @@ export default function ListadoPedidos() {
                     </td>
                     <td className="px-4 py-3">
                       <Link
-                        href={`/pedidos/${pedido.id}`}
+                        href={`${basePath}/${pedido.id}`}
                         className="text-verde-oscuro hover:underline text-sm font-medium"
                       >
                         Ver detalle

@@ -1,13 +1,8 @@
 'use client';
-
-import AppShell from '@/components/AppShell';
-import FormularioPedido from '@/components/FormularioPedido';
-
-// Página para crear un nuevo pedido
-export default function NuevoPedidoPage() {
-  return (
-    <AppShell>
-      <FormularioPedido />
-    </AppShell>
-  );
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+export default function Legacy() {
+  const r = useRouter();
+  useEffect(() => { r.replace('/vendedor/nuevo'); }, [r]);
+  return null;
 }
