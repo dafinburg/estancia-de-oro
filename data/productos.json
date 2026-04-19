@@ -1,0 +1,232 @@
+[
+  {
+    "id": "p200",
+    "codigo": "200",
+    "descripcion": "Aderezo A Base De Queso Rallado x 40gr.",
+    "unidad": "unidad",
+    "unidades_por_caja": 1,
+    "categoria": "ADEREZOS",
+    "marca": "GENERICO",
+    "activo": true
+  },
+  {
+    "id": "p201",
+    "codigo": "201",
+    "descripcion": "Aderezo A Base De Queso Rallado x 120gr.",
+    "unidad": "unidad",
+    "unidades_por_caja": 1,
+    "categoria": "ADEREZOS",
+    "marca": "GENERICO",
+    "activo": true
+  },
+  {
+    "id": "p100",
+    "codigo": "100",
+    "descripcion": "DDL X 400 GRS ESTANCIA DE ORO Caja x 12 Unid.",
+    "unidad": "unidad",
+    "unidades_por_caja": 12,
+    "categoria": "DULCE DE LECHE",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  },
+  {
+    "id": "p101",
+    "codigo": "101",
+    "descripcion": "DDL X 400 GRS ESTANCIA DE ORO x Unidad",
+    "unidad": "unidad",
+    "unidades_por_caja": 1,
+    "categoria": "DULCE DE LECHE",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  },
+  {
+    "id": "p943",
+    "codigo": "943",
+    "descripcion": "Manteca ESTANCIA DE ORO 100 GR Caja x 20 Unid.",
+    "unidad": "unidad",
+    "unidades_por_caja": 20,
+    "categoria": "MANTECAS",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  },
+  {
+    "id": "p146",
+    "codigo": "146",
+    "descripcion": "Manteca ESTANCIA DE ORO 100 GR x Unidad",
+    "unidad": "unidad",
+    "unidades_por_caja": 1,
+    "categoria": "MANTECAS",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  },
+  {
+    "id": "p941",
+    "codigo": "941",
+    "descripcion": "Manteca ESTANCIA DE ORO 200 GR Caja x 30 Unid.",
+    "unidad": "unidad",
+    "unidades_por_caja": 30,
+    "categoria": "MANTECAS",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  },
+  {
+    "id": "p147",
+    "codigo": "147",
+    "descripcion": "Manteca ESTANCIA DE ORO 200 GR x Unidad",
+    "unidad": "unidad",
+    "unidades_por_caja": 1,
+    "categoria": "MANTECAS",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  },
+  {
+    "id": "p310",
+    "codigo": "310",
+    "descripcion": "Queso Cremoso DON ROGELIO Horma",
+    "unidad": "unidad",
+    "unidades_por_caja": 4,
+    "categoria": "QUESOS PASTA BLANDA",
+    "marca": "DON ROGELIO",
+    "activo": true
+  },
+  {
+    "id": "p311",
+    "codigo": "311",
+    "descripcion": "Queso Cremoso ESTANCIA DE ORO Horma",
+    "unidad": "unidad",
+    "unidades_por_caja": 4,
+    "categoria": "QUESOS ARTESANALES PASTA BLANDA",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  },
+  {
+    "id": "p400",
+    "codigo": "400",
+    "descripcion": "Queso Criollo ESTANCIA DE ORO Horma",
+    "unidad": "unidad",
+    "unidades_por_caja": 2,
+    "categoria": "QUESOS ARTESANALES PASTA SEMIDURA CON OJOS",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  },
+  {
+    "id": "p302",
+    "codigo": "302",
+    "descripcion": "Queso Gruyere ESTANCIA DE ORO Cuña",
+    "unidad": "unidad",
+    "unidades_por_caja": 2,
+    "categoria": "QUESOS ARTESANALES PORCIONADOS",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  },
+  {
+    "id": "p351",
+    "codigo": "351",
+    "descripcion": "Queso Fontina ESTANCIA DE ORO Horma",
+    "unidad": "unidad",
+    "unidades_por_caja": 2,
+    "categoria": "QUESOS ARTESANALES PASTA SEMIDURA CON OJOS",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  },
+  {
+    "id": "p340",
+    "codigo": "340",
+    "descripcion": "Queso Gouda ESTANCIA DE ORO Horma",
+    "unidad": "unidad",
+    "unidades_por_caja": 2,
+    "categoria": "QUESOS ARTESANALES PASTA SEMIDURA SIN OJOS",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  },
+  {
+    "id": "p301",
+    "codigo": "301",
+    "descripcion": "Queso Gruyere ESTANCIA DE ORO Horma",
+    "unidad": "unidad",
+    "unidades_por_caja": 1,
+    "categoria": "QUESOS ARTESANALES PASTA SEMIDURA CON OJOS",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  },
+  {
+    "id": "p361",
+    "codigo": "361",
+    "descripcion": "Queso Mozzarella ESTANCIA DE ORO Horma",
+    "unidad": "unidad",
+    "unidades_por_caja": 4,
+    "categoria": "QUESOS ARTESANALES PASTA SEMIDURA SIN OJOS",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  },
+  {
+    "id": "p341",
+    "codigo": "341",
+    "descripcion": "Queso Pategras ESTANCIA DE ORO Horma",
+    "unidad": "unidad",
+    "unidades_por_caja": 2,
+    "categoria": "QUESOS ARTESANALES PASTA SEMIDURA CON OJOS",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  },
+  {
+    "id": "p312",
+    "codigo": "312",
+    "descripcion": "Queso Por Salut ESTANCIA DE ORO Horma",
+    "unidad": "unidad",
+    "unidades_por_caja": 4,
+    "categoria": "QUESOS ARTESANALES PASTA BLANDA",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  },
+  {
+    "id": "p411",
+    "codigo": "411",
+    "descripcion": "Queso Provoleta ESTANCIA DE ORO Horma",
+    "unidad": "unidad",
+    "unidades_por_caja": 2,
+    "categoria": "QUESOS ARTESANALES PASTA DURA",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  },
+  {
+    "id": "p421",
+    "codigo": "421",
+    "descripcion": "Queso Reggianito ESTANCIA DE ORO Horma",
+    "unidad": "unidad",
+    "unidades_por_caja": 2,
+    "categoria": "QUESOS ARTESANALES PASTA DURA",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  },
+  {
+    "id": "p431",
+    "codigo": "431",
+    "descripcion": "Queso Roquefort ESTANCIA DE ORO Horma",
+    "unidad": "unidad",
+    "unidades_por_caja": 4,
+    "categoria": "QUESOS ARTESANALES PASTA BLANDA",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  },
+  {
+    "id": "p402",
+    "codigo": "402",
+    "descripcion": "Queso Sardo ESTANCIA DE ORO Horma",
+    "unidad": "unidad",
+    "unidades_por_caja": 4,
+    "categoria": "QUESOS ARTESANALES PASTA DURA",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  },
+  {
+    "id": "p321",
+    "codigo": "321",
+    "descripcion": "Queso Tybo ESTANCIA DE ORO Horma",
+    "unidad": "unidad",
+    "unidades_por_caja": 4,
+    "categoria": "QUESOS ARTESANALES PASTA SEMIDURA SIN OJOS",
+    "marca": "LA ESTANCIA DE ORO",
+    "activo": true
+  }
+]
