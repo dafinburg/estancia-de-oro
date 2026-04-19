@@ -78,8 +78,8 @@ export default function DetallePedido({ backHref = '/vendedor', newHref = '/vend
           </p>
         </div>
         <div className="flex items-center gap-3 no-print">
-          <span className={`px-4 py-1.5 rounded-full text-sm font-medium ${estadoConfig[pedido.estado].color}`}>
-            {estadoConfig[pedido.estado].label}
+          <span className={`px-4 py-1.5 rounded-full text-sm font-medium ${(estadoConfig[pedido.estado] || estadoConfig.pendiente).color}`}>
+            {(estadoConfig[pedido.estado] || estadoConfig.pendiente).label}
           </span>
           <button
             onClick={() => window.print()}

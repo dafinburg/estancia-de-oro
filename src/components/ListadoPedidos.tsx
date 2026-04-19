@@ -115,8 +115,8 @@ export default function ListadoPedidos({ basePath = '/pedidos' }: { basePath?: s
                     <td className="px-4 py-3 text-gray-600">{formatDate(pedido.fecha_entrega)}</td>
                     <td className="px-4 py-3 text-right font-medium text-gray-800">{formatCurrency(pedido.total)}</td>
                     <td className="px-4 py-3 text-center">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${estadoConfig[pedido.estado].color}`}>
-                        {estadoConfig[pedido.estado].label}
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${(estadoConfig[pedido.estado] || estadoConfig.pendiente).color}`}>
+                        {(estadoConfig[pedido.estado] || estadoConfig.pendiente).label}
                       </span>
                     </td>
                     <td className="px-4 py-3">

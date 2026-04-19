@@ -44,7 +44,7 @@ export async function readPedidos(): Promise<Pedido[]> {
         const res = await fetch(`${SHEETS_WEBHOOK}?action=list`, { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data)) return data as Pedido[];
+          if (Array.isArray(data)) return data.map(normalizeFromSheet);
         }
       } catch (err) {
         console.error('Error leyendo pedidos de Google Sheets:', err);
@@ -116,4 +116,60 @@ export async function updatePedidoEstado(id: string, estado: string): Promise<Pe
   const filePath = path.join(DATA_DIR, 'pedidos.json');
   fs.writeFileSync(filePath, JSON.stringify(pedidos, null, 2), 'utf-8');
   return pedidos[idx];
+}
+
+// Normaliza un pedido que viene del Google Sheet (con headers como claves)
+// al formato interno del modelo Pedido (snake_case en español).
+// Esto es necesario porque el Apps Script devuelve las claves con los nombres
+// exactos del header del Sheet ("Estado", "Número", "Detalle", etc.)
+function normalizeFromSheet(row: Record<string, unknown>): Pedido {
+  // Si ya tiene la estructura esperada, devolver tal cual
+  if (row.id && row.numero && row.estado) return row as unknown as Pedido;
+
+  const pick = (...keys: string[]): unknown => {
+    for (const k of keys) {
+      if (row[k] !== undefined && row[k] !== null && row[k] !== '') return row[k];
+    }
+    return undefined;
+  };
+
+  const parseDate = (v: unknown): string => {
+    if (!v) return '';
+    const s = String(v);
+    // Si viene como ISO "2026-04-19T03:00:00.000Z" devolver solo yyyy-mm-dd
+    if (s.includes('T')) return s.split('T')[0];
+    return s;
+  };
+
+  const parseJsonArray = (v: unknown): unknown[] => {
+    if (!v) return [];
+    if (Array.isArray(v)) return v;
+    try { return JSON.parse(String(v)); } catch { return []; }
+  };
+
+  const estadoRaw = String(pick('estado', 'Estado') || 'pendiente').toLowerCase().trim();
+  const estado = (['pendiente', 'aprobado', 'enviado'].includes(estadoRaw) ? estadoRaw : 'pendiente') as Pedido['estado'];
+
+  return {
+    id: String(pick('id', 'ID') || ''),
+    numero: String(pick('numero', 'Número', 'Numero') || ''),
+    vendedor_id: String(pick('vendedor_id') || ''),
+    vendedor_nombre: String(pick('vendedor_nombre', 'Vendedor') || ''),
+    cliente_id: String(pick('cliente_id') || ''),
+    cliente_razon_social: String(pick('cliente_razon_social', 'Cliente') || ''),
+    cliente_telefono: String(pick('cliente_telefono', 'Teléfono cliente', 'Telefono cliente') || ''),
+    fecha_pedido: parseDate(pick('fecha_pedido', 'Fecha pedido')),
+    fecha_entrega: parseDate(pick('fecha_entrega', 'Fecha entrega')),
+    condicion_pago: String(pick('condicion_pago', 'Condición pago', 'Condicion pago') || ''),
+    transportista: String(pick('transportista', 'Transporte') || ''),
+    telefono_transporte: String(pick('telefono_transporte', 'Tel. transporte') || ''),
+    direccion_transporte: String(pick('direccion_transporte', 'Dir. transporte') || ''),
+    direccion_entrega: String(pick('direccion_entrega', 'Dirección entrega', 'Direccion entrega') || ''),
+    lineas: (pick('lineas') as Pedido['lineas']) || (parseJsonArray(pick('Detalle')) as Pedido['lineas']),
+    total: Number(pick('total', 'Total') || 0),
+    estado,
+    notas: String(pick('notas', 'Notas') || ''),
+    alertas: (pick('alertas') as Pedido['alertas']) || (parseJsonArray(pick('Alertas')) as Pedido['alertas']),
+    created_at: String(pick('created_at', 'Created At') || ''),
+  };
 }
