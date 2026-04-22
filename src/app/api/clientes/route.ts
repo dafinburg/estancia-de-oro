@@ -1,24 +1,41 @@
 import { NextResponse } from 'next/server';
-import { readJsonFile } from '@/lib/data';
-import { Cliente } from '@/types';
+import { readClientes, updateClienteEstado } from '@/lib/data';
+import { EstadoCuenta } from '@/types';
 
-// GET /api/clientes?ids=c001,c003 — Obtener clientes por IDs
+// GET /api/clientes?ids=c001,c003 — Clientes (filtrable por IDs)
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const idsParam = searchParams.get('ids');
 
-    const todosClientes = readJsonFile<Cliente[]>('clientes.json');
+    const todos = await readClientes();
 
     if (idsParam) {
-      const ids = idsParam.split(',');
-      const filtrados = todosClientes.filter((c) => ids.includes(c.id));
+      const ids = idsParam.split(',').filter(Boolean);
+      const filtrados = todos.filter((c) => ids.includes(c.id));
       return NextResponse.json(filtrados);
     }
 
-    // Sin filtro: devolver todos (para admin)
-    return NextResponse.json(todosClientes);
-  } catch {
+    return NextResponse.json(todos);
+  } catch (err) {
+    console.error('Error en /api/clientes:', err);
     return NextResponse.json({ error: 'Error al leer clientes' }, { status: 500 });
+  }
+}
+
+// PATCH /api/clientes — Actualizar estado de cuenta de un cliente
+// Body: { id, estado_cuenta: 'al_dia' | 'observado' | 'bloqueado' }
+export async function PATCH(request: Request) {
+  try {
+    const { id, estado_cuenta } = await request.json();
+    if (!id || !['al_dia', 'observado', 'bloqueado'].includes(estado_cuenta)) {
+      return NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 });
+    }
+    const ok = await updateClienteEstado(id, estado_cuenta as EstadoCuenta);
+    if (!ok) return NextResponse.json({ error: 'No se pudo actualizar' }, { status: 404 });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('Error PATCH /api/clientes:', err);
+    return NextResponse.json({ error: 'Error al actualizar cliente' }, { status: 500 });
   }
 }

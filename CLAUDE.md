@@ -162,14 +162,82 @@ Tres niveles con panel visual tipo semáforo:
    - Entre $0 y -$50.000 → ⚠ modal de confirmación + nota automática en el pedido
    - < -$50.000 → ✗ bloqueado, requiere autorización
 
-## Integración con Google Sheets
+## Integración con Google Sheets (multi-sheet)
 
 El Apps Script está en `docs/apps-script-code.gs`. Deployado como Web App (Execute as "Me", access "Anyone"), la URL se configura en Vercel como env var `GOOGLE_SHEETS_WEBHOOK_URL`.
 
+### Hojas dentro del Sheet de pedidos
+
+1. **Pedidos** — tablero de control en tiempo real (se llena vía POST desde la app)
+2. **Clientes** — maestro editable por la empresa. La app lo lee en producción.
+3. **Vendedores** — credenciales + `lista_precio_id` asignada a cada vendedor.
+4. **ListasPrecio** — catálogo de listas (`id`, `nombre`).
+5. **Precios** — `(lista_id, producto_id, precio)`. Tabla larga: una fila por producto dentro de cada lista. Agregar una lista nueva = agregar una fila en ListasPrecio + sus filas en Precios.
+6. **ProductosMadre** — catálogo queso madre → hijos (CREMOSO → [CREMOSO, PORT SALUT]; PATEGRAS → [PATEGRAS, CRIOLLO, FONTINA]; etc.) con `cantidad_por_tina`.
+7. **Elaboracion / ElaboracionHistorica** — planilla oficial del quesero: 44 columnas por tina (masa, litros, lote, temperaturas, pH, lotes de insumos, responsables de cada etapa, salmuera, subproductos).
+8. **Envasado / EnvasadoHistorico** — lo que se envasa por día y lote (producto, lote_elab, cant_envasada, kilos, peso promedio, operario).
+9. **Expedicion / ExpedicionHistorica** — preparación por cliente (cliente, producto, lote, unid/kilos preparados, operario).
+10. **FacturacionProd / FacturacionProdHistorica** — cierre por cliente (cant_total, producto, kilos_total, peso promedio, flag facturado).
+
+> Las hojas operativas (Elaboracion/Envasado/Expedicion/FacturacionProd) se cierran con `action: 'cerrar_planilla'` → las filas no-cerradas se mueven a su gemela histórica y quedan marcadas `cerrado=true`.
+
+### Seed inicial
+
+Una sola vez, después de deployar el Apps Script:
+
+```bash
+GOOGLE_SHEETS_WEBHOOK_URL="https://script.google.com/.../exec" node scripts/seed_sheets.mjs
+```
+
+Esto crea/repuebla las solapas Clientes, Vendedores, ListasPrecio, Precios y **ProductosMadre** con los datos de los JSON locales. Después la empresa edita ahí y la app lee del Sheet. Las 4 hojas operativas de producción (Elaboracion/Envasado/Expedicion/FacturacionProd) se crean al primer registro.
+
 ### Conceptos importantes
 
-- **Los headers del Sheet se convierten en claves del JSON** que devuelve el Apps Script (`"Estado"`, `"Número"`, `"Detalle"`, etc.) — por eso `src/lib/data.ts` tiene la función `normalizeFromSheet()` que traduce esas claves al modelo interno (`estado`, `numero`, `lineas`).
+- **Los headers del Sheet se convierten en claves del JSON** que devuelve el Apps Script. `src/lib/data.ts` tiene `normalizeFromSheet()` (para pedidos), `normalizeCliente()` y `normalizeVendedor()` que traducen al modelo interno.
+- **Vendedores: `.clientes` se reconstruye desde la hoja Clientes por `vendedor_id`** — no se guarda como array en el Sheet de Vendedores.
 - Defensive rendering: todos los componentes que usan `estadoConfig[pedido.estado]` tienen fallback a `estadoConfig.pendiente` para no explotar si el estado viene fuera del enum.
+
+## Listas de precio por vendedor
+
+- Cada vendedor tiene `lista_precio_id`. Al loguearse, el formulario carga esa lista y aplica sus precios.
+- Si el cliente tiene su propia `lista_precio_id` distinta, gana la del cliente (se recarga al seleccionarlo).
+- **Descuento %** por línea en el formulario: el vendedor puede pedir autorización de un % de descuento. Se aplica sobre `precio_unitario` y se guarda en `LineaPedido.descuento_porcentaje` y `precio_bonificado`.
+
+## Estados de cuenta del cliente
+
+Campo opcional `estado_cuenta` en `Cliente`. Si no está seteado, se deriva del saldo:
+
+| Saldo                | Estado automático | En formulario           |
+|----------------------|-------------------|-------------------------|
+| ≥ 0                  | `al_dia`          | Banner verde — pasa      |
+| entre 0 y -$50.000   | `observado`       | Banner amarillo — avisa, requiere confirmación |
+| < -$50.000           | `bloqueado`       | Banner rojo — no deja enviar, "hablar con administración" |
+
+Desde `/gestion/cobranzas` se puede **sobreescribir manualmente** con un dropdown (al_dia / observado / bloqueado / auto). Se persiste en la columna `estado_cuenta` del Sheet.
+
+## Módulo Producción (planilla oficial de elaboración)
+
+`/gestion/produccion` ahora tiene **9 tabs** que replican la "PLANILLA ELABORACION OFICIAL" original (xlsx en el root del proyecto padre):
+
+**Operativas** — se editan día a día y se cierran:
+- **Planificación** — resumen agregado por producto según pedidos tomados (lo que había antes).
+- **Elaboración** — 44 columnas por tina (masa madre → hijos, temperaturas, pH, insumos, salmuera). Dropdowns `masa` y `queso_1/2/3` leen de ProductosMadre.
+- **Envasado**, **Expedición**, **Facturación** — formularios más chicos, mismas columnas que el xlsx.
+
+**Históricas** — solo lectura: lo que quedó cerrado en semanas anteriores.
+
+Arquitectura:
+- `src/components/produccion/PlanillaGenerica.tsx` — componente genérico (tabla + modal de alta/edit + cerrar planilla). Cada tab define un array `campos: CampoPlanilla[]`.
+- `src/lib/produccion.ts` — readers/writers contra Apps Script (o JSON local en dev).
+- `src/app/api/produccion/[tipo]/route.ts` — CRUD genérico, `tipo` ∈ {elaboracion, envasado, expedicion, facturacion_prod}.
+- `src/app/api/produccion/cerrar/route.ts` — cierre de planilla (mueve filas no-cerradas a la histórica).
+- `src/app/api/produccion/productos-madre/route.ts` — catálogo madre/hijos.
+
+Datos en dev: `/data/produccion/*.json` (se crean al guardar el primer registro).
+
+## Edición de pedidos desde gestión
+
+`/gestion/pedidos/[id]` muestra detalle completo + botón "Editar" que permite modificar: fecha entrega, dirección, transporte, condición pago, notas, y cada línea (cajas, cantidad, kg, precio, descuento %). Persiste vía `PATCH /api/pedidos` con `{id, cambios}`, que en producción escribe al Sheet mediante `action: 'update_full'`.
 
 ### Flujo de datos
 

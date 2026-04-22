@@ -1,0 +1,9 @@
+[
+  { "madre": "CREMOSO", "hijos": ["CREMOSO", "PORT SALUT"], "cantidad_por_tina": 2 },
+  { "madre": "TYBO", "hijos": ["TYBO"], "cantidad_por_tina": 1 },
+  { "madre": "MUZZARELLA", "hijos": ["MUZZARELLA"], "cantidad_por_tina": 1 },
+  { "madre": "PATEGRAS", "hijos": ["PATEGRAS", "CRIOLLO", "FONTINA"], "cantidad_por_tina": 3 },
+  { "madre": "GOUDA", "hijos": ["GOUDA"], "cantidad_por_tina": 1 },
+  { "madre": "SARDO", "hijos": ["SARDO", "REGGIANITO", "PROVOLETA"], "cantidad_por_tina": 3 },
+  { "madre": "GRUYERE", "hijos": ["GRUYERE HORMA", "GRUYERE CUÑA"], "cantidad_por_tina": 2 }
+]

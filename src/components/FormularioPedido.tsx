@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Cliente, Producto, ListaPrecio, LineaPedido, ResultadoValidacion, AlertaPedido } from '@/types';
 import { formatCurrency } from '@/lib/format';
+import { estadoCuentaDe, estadoLabel } from '@/lib/cliente';
 import PanelValidaciones from './PanelValidaciones';
 
 // Formulario de pedido — basado en el template real "NOTA DE PEDIDO"
@@ -39,6 +40,8 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
   const [modalSaldo, setModalSaldo] = useState(false);
 
   const clienteSeleccionado = clientes.find((c) => c.id === clienteId);
+  const estadoCliente = clienteSeleccionado ? estadoCuentaDe(clienteSeleccionado) : null;
+  const clienteBloqueado = estadoCliente === 'bloqueado';
 
   function crearLineaVacia(): LineaPedido {
     return {
@@ -52,7 +55,20 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
       precio_unitario: 0,
       precio_lista: 0,
       precio_bonificado: 0,
+      descuento_porcentaje: 0,
       subtotal: 0,
+    };
+  }
+
+  // Helper: recalcular precio bonificado y subtotal a partir de precio_unitario + descuento
+  function recalcular(l: LineaPedido): LineaPedido {
+    const desc = Math.max(0, Math.min(100, l.descuento_porcentaje || 0));
+    const bonificado = +(l.precio_unitario * (1 - desc / 100)).toFixed(2);
+    return {
+      ...l,
+      descuento_porcentaje: desc,
+      precio_bonificado: bonificado,
+      subtotal: +(l.cantidad * bonificado).toFixed(2),
     };
   }
 
@@ -94,13 +110,11 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
               if (!l.producto_id) return l;
               const precioItem = d.precios?.find((p: {producto_id: string; precio: number}) => p.producto_id === l.producto_id);
               const precioLista = precioItem?.precio || 0;
-              return {
+              return recalcular({
                 ...l,
                 precio_lista: precioLista,
                 precio_unitario: precioLista,
-                precio_bonificado: precioLista,
-                subtotal: l.cantidad * precioLista,
-              };
+              });
             }));
           })
           .catch(() => {});
@@ -128,27 +142,22 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
           linea.unidades_por_caja = producto.unidades_por_caja || 1;
           linea.precio_lista = getPrecioLista(producto.id);
           linea.precio_unitario = linea.precio_lista;
-          linea.precio_bonificado = linea.precio_lista;
           linea.cantidad = linea.cajas * linea.unidades_por_caja;
-          linea.subtotal = linea.cantidad * linea.precio_unitario;
         }
       } else if (campo === 'cajas') {
         linea.cajas = Number(valor) || 0;
         linea.cantidad = linea.cajas * linea.unidades_por_caja;
-        linea.subtotal = linea.cantidad * linea.precio_unitario;
       } else if (campo === 'cantidad') {
         linea.cantidad = Number(valor) || 0;
-        // Si cambia unidades manualmente, no tocar cajas
-        linea.subtotal = linea.cantidad * linea.precio_unitario;
       } else if (campo === 'kg_aprox') {
         linea.kg_aprox = Number(valor) || 0;
       } else if (campo === 'precio_unitario') {
         linea.precio_unitario = Number(valor) || 0;
-        linea.precio_bonificado = linea.precio_unitario;
-        linea.subtotal = linea.cantidad * linea.precio_unitario;
+      } else if (campo === 'descuento_porcentaje') {
+        linea.descuento_porcentaje = Number(valor) || 0;
       }
 
-      nuevas[index] = linea;
+      nuevas[index] = recalcular(linea);
       return nuevas;
     });
   };
@@ -221,22 +230,23 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
     });
     if (clienteSeleccionado) {
       const saldo = clienteSeleccionado.saldo_cuenta_corriente;
-      if (saldo < -50000) {
+      const est = estadoCuentaDe(clienteSeleccionado);
+      if (est === 'bloqueado') {
         res.push({
-          campo: 'Saldo cuenta corriente',
+          campo: 'Estado cliente',
           estado: 'error',
-          mensaje: `Cliente con deuda de ${formatCurrency(Math.abs(saldo))} — excede el límite de $50.000. Requiere autorización.`,
+          mensaje: `Cliente bloqueado — hablar con administración para aprobar el pedido.`,
         });
-      } else if (saldo < 0) {
+      } else if (est === 'observado') {
         res.push({
-          campo: 'Saldo cuenta corriente',
+          campo: 'Estado cliente',
           estado: 'warning',
           mensaje: saldoConfirmado
-            ? `Cliente con saldo vencido de ${formatCurrency(Math.abs(saldo))} — vendedor confirmó continuar`
-            : `Cliente con saldo vencido de ${formatCurrency(Math.abs(saldo))} — confirmar para continuar`,
+            ? `Cliente observado (saldo ${formatCurrency(Math.abs(saldo))}) — vendedor confirmó continuar`
+            : `Cliente observado (saldo ${formatCurrency(Math.abs(saldo))}) — confirmar para continuar`,
         });
       } else {
-        res.push({ campo: 'Saldo cuenta corriente', estado: 'ok', mensaje: 'Sin deuda pendiente' });
+        res.push({ campo: 'Estado cliente', estado: 'ok', mensaje: 'Cliente al día' });
       }
     }
     return res;
@@ -247,14 +257,11 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
   }, [mostrarValidaciones, ejecutarValidaciones]);
 
   const puedeEnviar = (): boolean => {
+    if (clienteBloqueado) return false;
     const vals = ejecutarValidaciones();
     if (vals.some((v) => v.estado === 'error')) return false;
-    const saldoW = vals.find((v) => v.campo === 'Saldo cuenta corriente' && v.estado === 'warning');
-    if (saldoW && !saldoConfirmado && clienteSeleccionado &&
-        clienteSeleccionado.saldo_cuenta_corriente < 0 &&
-        clienteSeleccionado.saldo_cuenta_corriente >= -50000) {
-      return false;
-    }
+    const obsW = vals.find((v) => v.campo === 'Estado cliente' && v.estado === 'warning');
+    if (obsW && !saldoConfirmado && estadoCliente === 'observado') return false;
     return true;
   };
 
@@ -263,10 +270,9 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
     const vals = ejecutarValidaciones();
     setValidaciones(vals);
 
-    if (clienteSeleccionado &&
-        clienteSeleccionado.saldo_cuenta_corriente < 0 &&
-        clienteSeleccionado.saldo_cuenta_corriente >= -50000 &&
-        !saldoConfirmado) {
+    if (clienteBloqueado) return; // no se envía jamás — hay un banner arriba
+
+    if (estadoCliente === 'observado' && !saldoConfirmado) {
       setModalSaldo(true);
       return;
     }
@@ -399,6 +405,36 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
           </select>
         </div>
 
+        {clienteSeleccionado && estadoCliente === 'bloqueado' && (
+          <div className="bg-rojo-claro border-2 border-rojo rounded-lg p-4 flex items-start gap-3">
+            <span className="text-2xl">🚫</span>
+            <div className="flex-1">
+              <p className="font-bold text-rojo">Cliente bloqueado</p>
+              <p className="text-sm text-red-800 mt-1">
+                No se puede generar el pedido. <strong>Hablar con administración para aprobar el pedido.</strong>
+              </p>
+            </div>
+          </div>
+        )}
+
+        {clienteSeleccionado && estadoCliente === 'observado' && (
+          <div className="bg-amarillo-claro border-2 border-amarillo rounded-lg p-4 flex items-start gap-3">
+            <span className="text-2xl">⚠</span>
+            <div className="flex-1">
+              <p className="font-bold text-amber-900">Cliente observado</p>
+              <p className="text-sm text-amber-800 mt-1">
+                El cliente tiene saldo pendiente. Podés avanzar con el pedido pero se va a dejar nota automática.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {clienteSeleccionado && estadoCliente === 'al_dia' && (
+          <div className="bg-verde-ok-claro border border-verde-ok/40 rounded-lg px-4 py-2 text-sm text-verde-ok font-medium">
+            ✓ Cliente {estadoLabel[estadoCliente]} — podés avanzar con el pedido.
+          </div>
+        )}
+
         {clienteSeleccionado && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-gray-50 rounded-lg p-4 text-sm">
             <div><span className="text-gray-500">Razón social:</span> <span className="font-medium text-gray-800">{clienteSeleccionado.razon_social}</span></div>
@@ -460,7 +496,7 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
       <section className="bg-white rounded-xl shadow-sm border p-5 space-y-4">
         <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Productos por líneas</h3>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[900px]">
+          <table className="w-full text-sm min-w-[980px]">
             <thead>
               <tr className="bg-gray-50 text-gray-600 text-xs">
                 <th className="text-left px-2 py-2 font-medium w-20">Código</th>
@@ -470,6 +506,7 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
                 <th className="text-right px-2 py-2 font-medium w-20">Unidades</th>
                 <th className="text-right px-2 py-2 font-medium w-20">Kg aprox</th>
                 <th className="text-right px-2 py-2 font-medium w-24">$ x Kg/U</th>
+                <th className="text-right px-2 py-2 font-medium w-16">Desc %</th>
                 <th className="text-right px-2 py-2 font-medium w-28">Subtotal</th>
                 <th className="w-10"></th>
               </tr>
@@ -520,6 +557,19 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
                       <span className="block text-[10px] text-amber-600 mt-0.5">Lista: {formatCurrency(linea.precio_lista)}</span>
                     )}
                   </td>
+                  <td className="px-2 py-2">
+                    <input type="number" min="0" max="100" step="0.5" value={linea.descuento_porcentaje || ''}
+                      onChange={(e) => actualizarLinea(index, 'descuento_porcentaje', e.target.value)}
+                      placeholder="0"
+                      className={`w-full px-2 py-1.5 border rounded text-right text-xs focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-800 ${
+                        linea.descuento_porcentaje > 0 ? 'border-amarillo bg-amarillo-claro' : ''
+                      }`} />
+                    {linea.descuento_porcentaje > 0 && (
+                      <span className="block text-[10px] text-amber-700 mt-0.5">
+                        → {formatCurrency(linea.precio_bonificado)}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-2 py-2 text-right font-medium text-gray-800 text-xs">
                     {linea.subtotal > 0 ? formatCurrency(linea.subtotal) : '—'}
                   </td>
@@ -540,6 +590,7 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
                 <td className="px-2 py-2 text-right text-xs">{totalCajas}</td>
                 <td className="px-2 py-2 text-right text-xs">{totalUnidades}</td>
                 <td className="px-2 py-2 text-right text-xs">{totalKg.toFixed(1)} kg</td>
+                <td></td>
                 <td></td>
                 <td className="px-2 py-2 text-right text-verde-oscuro text-sm">{formatCurrency(total)}</td>
                 <td></td>
@@ -583,9 +634,10 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
           className="px-6 py-2.5 border-2 border-verde-oscuro text-verde-oscuro rounded-lg font-medium hover:bg-verde-oscuro hover:text-white transition-colors"
         >Validar pedido</button>
         <button
-          onClick={handleSubmit} disabled={enviando}
-          className="px-6 py-2.5 bg-verde-oscuro text-white rounded-lg font-medium hover:bg-verde-claro transition-colors disabled:opacity-50"
-        >{enviando ? 'Guardando...' : 'Confirmar pedido'}</button>
+          onClick={handleSubmit} disabled={enviando || clienteBloqueado}
+          title={clienteBloqueado ? 'Cliente bloqueado — no se puede generar el pedido' : ''}
+          className="px-6 py-2.5 bg-verde-oscuro text-white rounded-lg font-medium hover:bg-verde-claro transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >{enviando ? 'Guardando...' : clienteBloqueado ? 'Cliente bloqueado' : 'Confirmar pedido'}</button>
       </div>
 
       {modalSaldo && clienteSeleccionado && (

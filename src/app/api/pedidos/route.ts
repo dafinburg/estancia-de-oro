@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { readPedidos, savePedido, updatePedidoEstado } from '@/lib/data';
+import { readPedidos, savePedido, updatePedidoEstado, updatePedidoCompleto } from '@/lib/data';
 import { Pedido } from '@/types';
 import { generarNumeroPedido } from '@/lib/format';
 
@@ -45,11 +45,21 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH /api/pedidos — Actualizar estado de un pedido
+// PATCH /api/pedidos
+//   Body {id, estado}  → cambia solo el estado (flujo pendiente/aprobado/enviado)
+//   Body {id, cambios} → editar campos arbitrarios del pedido desde gestión
 export async function PATCH(request: Request) {
   try {
-    const { id, estado } = await request.json();
-    const pedido = await updatePedidoEstado(id, estado);
+    const body = await request.json();
+    const { id, estado, cambios } = body;
+
+    let pedido;
+    if (cambios) {
+      pedido = await updatePedidoCompleto(id, cambios);
+    } else {
+      pedido = await updatePedidoEstado(id, estado);
+    }
+
     if (!pedido) {
       return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 });
     }

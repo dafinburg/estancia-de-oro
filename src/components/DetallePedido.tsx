@@ -120,6 +120,7 @@ export default function DetallePedido({ backHref = '/vendedor', newHref = '/vend
                 <th className="text-right px-3 py-2 font-medium">Unidades</th>
                 <th className="text-right px-3 py-2 font-medium">Kg aprox</th>
                 <th className="text-right px-3 py-2 font-medium">Precio</th>
+                <th className="text-right px-3 py-2 font-medium">Desc %</th>
                 <th className="text-right px-3 py-2 font-medium">Subtotal</th>
               </tr>
             </thead>
@@ -137,13 +138,16 @@ export default function DetallePedido({ backHref = '/vendedor', newHref = '/vend
                       <span className="block text-xs text-amber-600">Lista: {formatCurrency(linea.precio_lista)}</span>
                     )}
                   </td>
+                  <td className="px-3 py-2 text-right text-gray-800">
+                    {linea.descuento_porcentaje ? `${linea.descuento_porcentaje}%` : '—'}
+                  </td>
                   <td className="px-3 py-2 text-right font-medium text-gray-800">{formatCurrency(linea.subtotal)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr className="bg-gray-50 font-bold">
-                <td colSpan={6} className="px-3 py-3 text-right text-gray-800">Total:</td>
+                <td colSpan={7} className="px-3 py-3 text-right text-gray-800">Total:</td>
                 <td className="px-3 py-3 text-right text-verde-oscuro text-lg">{formatCurrency(pedido.total)}</td>
               </tr>
             </tfoot>

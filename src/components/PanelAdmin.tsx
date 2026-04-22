@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Pedido, EstadoPedido } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/format';
 
@@ -9,7 +10,6 @@ export default function PanelAdmin() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState<EstadoPedido | 'todos'>('todos');
-  const [pedidoExpandido, setPedidoExpandido] = useState<string | null>(null);
   const [actualizando, setActualizando] = useState<string | null>(null);
 
   // Cargar todos los pedidos (sin filtro de vendedor)
@@ -182,85 +182,42 @@ export default function PanelAdmin() {
               </thead>
               <tbody className="divide-y">
                 {pedidosOrdenados.map((pedido) => (
-                  <Fragment key={pedido.id}>
-                    <tr className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-mono text-xs font-medium text-gray-800">
-                        {pedido.numero}
-                        {pedido.alertas && pedido.alertas.length > 0 && (
-                          <span className="ml-1 text-amarillo" title="Tiene alertas">⚠</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600 text-xs">{pedido.vendedor_nombre}</td>
-                      <td className="px-4 py-3 text-gray-800">{pedido.cliente_razon_social}</td>
-                      <td className="px-4 py-3 text-gray-600">{formatDate(pedido.fecha_entrega)}</td>
-                      <td className="px-4 py-3 text-right font-medium text-gray-800">{formatCurrency(pedido.total)}</td>
-                      <td className="px-4 py-3 text-center">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${(estadoConfig[pedido.estado] || estadoConfig.pendiente).color}`}>
-                          {(estadoConfig[pedido.estado] || estadoConfig.pendiente).label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 space-x-2">
+                  <tr key={pedido.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-mono text-xs font-medium text-gray-800">
+                      {pedido.numero}
+                      {pedido.alertas && pedido.alertas.length > 0 && (
+                        <span className="ml-1 text-amarillo" title="Tiene alertas">⚠</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600 text-xs">{pedido.vendedor_nombre}</td>
+                    <td className="px-4 py-3 text-gray-800">{pedido.cliente_razon_social}</td>
+                    <td className="px-4 py-3 text-gray-600">{formatDate(pedido.fecha_entrega)}</td>
+                    <td className="px-4 py-3 text-right font-medium text-gray-800">{formatCurrency(pedido.total)}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${(estadoConfig[pedido.estado] || estadoConfig.pendiente).color}`}>
+                        {(estadoConfig[pedido.estado] || estadoConfig.pendiente).label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 space-x-2 whitespace-nowrap">
+                      <Link
+                        href={`/gestion/pedidos/${pedido.id}`}
+                        className="text-verde-oscuro hover:underline text-xs font-medium"
+                      >
+                        Ver / Editar
+                      </Link>
+                      {siguienteEstado[pedido.estado] && (
                         <button
-                          onClick={() => setPedidoExpandido(
-                            pedidoExpandido === pedido.id ? null : pedido.id
-                          )}
-                          className="text-verde-oscuro hover:underline text-xs font-medium"
+                          onClick={() => cambiarEstado(pedido.id, siguienteEstado[pedido.estado]!)}
+                          disabled={actualizando === pedido.id}
+                          className="bg-verde-oscuro text-white px-3 py-1 rounded text-xs font-medium hover:bg-verde-claro disabled:opacity-50"
                         >
-                          {pedidoExpandido === pedido.id ? 'Cerrar' : 'Ver'}
+                          {actualizando === pedido.id
+                            ? '...'
+                            : `→ ${estadoConfig[siguienteEstado[pedido.estado]!].label}`}
                         </button>
-                        {siguienteEstado[pedido.estado] && (
-                          <button
-                            onClick={() => cambiarEstado(pedido.id, siguienteEstado[pedido.estado]!)}
-                            disabled={actualizando === pedido.id}
-                            className="bg-verde-oscuro text-white px-3 py-1 rounded text-xs font-medium hover:bg-verde-claro disabled:opacity-50"
-                          >
-                            {actualizando === pedido.id
-                              ? '...'
-                              : `→ ${estadoConfig[siguienteEstado[pedido.estado]!].label}`}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                    {/* Fila expandida con detalle */}
-                    {pedidoExpandido === pedido.id && (
-                      <tr key={`${pedido.id}-detail`}>
-                        <td colSpan={7} className="px-4 py-4 bg-gray-50">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm mb-4">
-                            <div>
-                              <p className="text-gray-500">Dirección: <span className="text-gray-800">{pedido.direccion_entrega}</span></p>
-                              <p className="text-gray-500">Transportista: <span className="text-gray-800">{pedido.transportista || '—'}</span></p>
-                            </div>
-                            {pedido.notas && (
-                              <div>
-                                <p className="text-gray-500">Notas:</p>
-                                <p className="text-gray-800 text-xs whitespace-pre-wrap">{pedido.notas}</p>
-                              </div>
-                            )}
-                          </div>
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr className="text-gray-500">
-                                <th className="text-left py-1">Producto</th>
-                                <th className="text-right py-1">Cant.</th>
-                                <th className="text-right py-1">Precio</th>
-                                <th className="text-right py-1">Subtotal</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {pedido.lineas.map((l, i) => (
-                                <tr key={i} className="border-t">
-                                  <td className="py-1 text-gray-800">{l.codigo} — {l.descripcion}</td>
-                                  <td className="py-1 text-right text-gray-800">{l.cantidad}</td>
-                                  <td className="py-1 text-right text-gray-800">{formatCurrency(l.precio_unitario)}</td>
-                                  <td className="py-1 text-right font-medium text-gray-800">{formatCurrency(l.subtotal)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
+                      )}
+                    </td>
+                  </tr>
                 ))}
               </tbody>
             </table>

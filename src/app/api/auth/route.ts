@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { readJsonFile } from '@/lib/data';
-import { Vendedor } from '@/types';
+import { readVendedores } from '@/lib/data';
 
-// POST /api/auth — Validar credenciales del vendedor
+// POST /api/auth — Validar credenciales
+// Lee vendedores desde el Sheet en producción, JSON en dev.
 export async function POST(request: Request) {
   try {
     const { usuario, password } = await request.json();
-    const vendedores = readJsonFile<Vendedor[]>('vendedores.json');
+    const vendedores = await readVendedores();
 
     const vendedor = vendedores.find(
       (v) => v.usuario === usuario && v.password === password
@@ -20,7 +20,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ ok: true, vendedor });
-  } catch {
+  } catch (err) {
+    console.error('Error en /api/auth:', err);
     return NextResponse.json(
       { ok: false, error: 'Error interno del servidor' },
       { status: 500 }
