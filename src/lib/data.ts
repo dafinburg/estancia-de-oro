@@ -16,6 +16,7 @@
 import fs from 'fs';
 import path from 'path';
 import { Pedido, Cliente, Vendedor, ListaPrecio, EstadoCuenta } from '@/types';
+import { cached, invalidate } from '@/lib/cache';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const IS_VERCEL = process.env.VERCEL === '1';
@@ -58,9 +59,11 @@ async function fetchFromSheet<T>(action: string, params: Record<string, string> 
 // ============================================================
 export async function readPedidos(): Promise<Pedido[]> {
   if (IS_VERCEL) {
-    const data = await fetchFromSheet<unknown[]>('list');
-    if (Array.isArray(data)) return (data as Record<string, unknown>[]).map(normalizeFromSheet);
-    return globalAny.__pedidos_cache || [];
+    return cached('pedidos', 20, async () => {
+      const data = await fetchFromSheet<unknown[]>('list');
+      if (Array.isArray(data)) return (data as Record<string, unknown>[]).map(normalizeFromSheet);
+      return globalAny.__pedidos_cache || [];
+    });
   }
   try {
     return readJsonFile<Pedido[]>('pedidos.json');
@@ -72,6 +75,7 @@ export async function readPedidos(): Promise<Pedido[]> {
 export async function savePedido(pedido: Pedido): Promise<void> {
   if (IS_VERCEL) {
     globalAny.__pedidos_cache = [...(globalAny.__pedidos_cache || []), pedido];
+    invalidate('pedidos');
     if (SHEETS_WEBHOOK) {
       try {
         await fetch(SHEETS_WEBHOOK, {
@@ -97,6 +101,7 @@ export async function updatePedidoEstado(id: string, estado: string): Promise<Pe
     const cache = globalAny.__pedidos_cache || [];
     const idx = cache.findIndex((p) => p.id === id);
     if (idx !== -1) cache[idx].estado = estado as Pedido['estado'];
+    invalidate('pedidos');
 
     // Enviar al Sheet — esa es la fuente de verdad
     if (SHEETS_WEBHOOK) {
@@ -164,10 +169,17 @@ export async function updatePedidoCompleto(id: string, cambios: Partial<Pedido>)
 // ============================================================
 export async function readClientes(): Promise<Cliente[]> {
   if (IS_VERCEL && SHEETS_WEBHOOK) {
-    const data = await fetchFromSheet<unknown[]>('clientes');
-    if (Array.isArray(data) && data.length > 0) {
-      return data.map(normalizeCliente);
-    }
+    return cached('clientes', 60, async () => {
+      const data = await fetchFromSheet<unknown[]>('clientes');
+      if (Array.isArray(data) && data.length > 0) {
+        return data.map(normalizeCliente);
+      }
+      try {
+        return readJsonFile<Cliente[]>('clientes.json');
+      } catch {
+        return [];
+      }
+    });
   }
   try {
     return readJsonFile<Cliente[]>('clientes.json');
@@ -183,11 +195,18 @@ export async function readClientes(): Promise<Cliente[]> {
 // ============================================================
 export async function readVendedores(): Promise<Vendedor[]> {
   if (IS_VERCEL && SHEETS_WEBHOOK) {
-    const data = await fetchFromSheet<Record<string, unknown>[]>('vendedores');
-    if (Array.isArray(data) && data.length > 0) {
-      const clientes = await readClientes();
-      return data.map((v) => normalizeVendedor(v, clientes));
-    }
+    return cached('vendedores', 60, async () => {
+      const data = await fetchFromSheet<Record<string, unknown>[]>('vendedores');
+      if (Array.isArray(data) && data.length > 0) {
+        const clientes = await readClientes();
+        return data.map((v) => normalizeVendedor(v, clientes));
+      }
+      try {
+        return readJsonFile<Vendedor[]>('vendedores.json');
+      } catch {
+        return [];
+      }
+    });
   }
   try {
     return readJsonFile<Vendedor[]>('vendedores.json');
@@ -201,8 +220,15 @@ export async function readVendedores(): Promise<Vendedor[]> {
 // ============================================================
 export async function readListasPrecio(): Promise<ListaPrecio[]> {
   if (IS_VERCEL && SHEETS_WEBHOOK) {
-    const data = await fetchFromSheet<ListaPrecio[]>('listas_precio');
-    if (Array.isArray(data) && data.length > 0) return data;
+    return cached('listas_precio', 300, async () => {
+      const data = await fetchFromSheet<ListaPrecio[]>('listas_precio');
+      if (Array.isArray(data) && data.length > 0) return data;
+      try {
+        return readJsonFile<ListaPrecio[]>('listas_precio.json');
+      } catch {
+        return [];
+      }
+    });
   }
   try {
     return readJsonFile<ListaPrecio[]>('listas_precio.json');
@@ -245,7 +271,8 @@ function normalizeFromSheet(row: Record<string, unknown>): Pedido {
   };
 
   const estadoRaw = String(pick('estado', 'Estado') || 'pendiente').toLowerCase().trim();
-  const estado = (['pendiente', 'aprobado', 'enviado'].includes(estadoRaw) ? estadoRaw : 'pendiente') as Pedido['estado'];
+  const estadosValidos = ['pendiente', 'aprobado', 'enviado', 'en_produccion', 'entregado', 'finalizado'];
+  const estado = (estadosValidos.includes(estadoRaw) ? estadoRaw : 'pendiente') as Pedido['estado'];
 
   return {
     id: String(pick('id', 'ID') || ''),

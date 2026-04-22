@@ -55,13 +55,19 @@ export default function PanelAdmin() {
     pendiente: { label: 'Pendiente', color: 'bg-amarillo-claro text-amber-800' },
     aprobado: { label: 'Aprobado', color: 'bg-verde-ok-claro text-verde-ok' },
     enviado: { label: 'Enviado', color: 'bg-blue-100 text-blue-800' },
+    en_produccion: { label: 'En producción', color: 'bg-purple-100 text-purple-800' },
+    entregado: { label: 'Entregado', color: 'bg-emerald-100 text-emerald-800' },
+    finalizado: { label: 'Finalizado', color: 'bg-gray-200 text-gray-700' },
   };
 
   // Flujo de estados posibles
   const siguienteEstado: Record<EstadoPedido, EstadoPedido | null> = {
     pendiente: 'aprobado',
     aprobado: 'enviado',
-    enviado: null,
+    enviado: 'en_produccion',
+    en_produccion: 'entregado',
+    entregado: 'finalizado',
+    finalizado: null,
   };
 
   const pedidosFiltrados = filtroEstado === 'todos'
@@ -145,7 +151,7 @@ export default function PanelAdmin() {
 
       {/* Filtros */}
       <div className="flex flex-wrap gap-2">
-        {(['todos', 'pendiente', 'aprobado', 'enviado'] as const).map((estado) => (
+        {(['todos', 'pendiente', 'aprobado', 'enviado', 'en_produccion', 'entregado', 'finalizado'] as const).map((estado) => (
           <button
             key={estado}
             onClick={() => setFiltroEstado(estado)}

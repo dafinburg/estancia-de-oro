@@ -58,8 +58,10 @@ export default function ModuloCobranzas() {
     }
   };
 
-  const clientesFiltrados = useMemo(() => {
-    let res = clientes;
+  // Universo filtrado — se aplica a TODO (KPIs + ranking + tabla).
+  // Además ocultamos clientes con saldo=0 (no son gestionables por cobranzas).
+  const universo = useMemo(() => {
+    let res = clientes.filter(c => c.saldo_cuenta_corriente !== 0);
 
     if (filtroEstado !== 'todos') {
       res = res.filter(c => estadoCuentaDe(c) === filtroEstado);
@@ -67,7 +69,11 @@ export default function ModuloCobranzas() {
     if (filtroVendedor !== 'todos') {
       res = res.filter(c => (c.vendedor_id || '') === filtroVendedor);
     }
+    return res;
+  }, [clientes, filtroEstado, filtroVendedor]);
 
+  const clientesFiltrados = useMemo(() => {
+    let res = universo;
     if (busqueda.trim()) {
       const q = busqueda.toLowerCase();
       res = res.filter(c =>
@@ -77,26 +83,27 @@ export default function ModuloCobranzas() {
         c.provincia?.toLowerCase().includes(q)
       );
     }
-    return res.sort((a, b) => a.saldo_cuenta_corriente - b.saldo_cuenta_corriente);
-  }, [clientes, filtroEstado, filtroVendedor, busqueda]);
+    return [...res].sort((a, b) => a.saldo_cuenta_corriente - b.saldo_cuenta_corriente);
+  }, [universo, busqueda]);
 
-  // KPIs
-  const cantAlDia = clientes.filter(c => estadoCuentaDe(c) === 'al_dia').length;
-  const cantObservado = clientes.filter(c => estadoCuentaDe(c) === 'observado').length;
-  const cantBloqueado = clientes.filter(c => estadoCuentaDe(c) === 'bloqueado').length;
-  const totalDeuda = clientes.reduce((s, c) => s + (c.saldo_cuenta_corriente < 0 ? Math.abs(c.saldo_cuenta_corriente) : 0), 0);
+  // KPIs — sobre el universo filtrado
+  const cantAlDia = universo.filter(c => estadoCuentaDe(c) === 'al_dia').length;
+  const cantObservado = universo.filter(c => estadoCuentaDe(c) === 'observado').length;
+  const cantBloqueado = universo.filter(c => estadoCuentaDe(c) === 'bloqueado').length;
+  const totalDeuda = universo.reduce((s, c) => s + (c.saldo_cuenta_corriente < 0 ? Math.abs(c.saldo_cuenta_corriente) : 0), 0);
 
-  // Ranking por provincia (solo clientes con deuda)
-  const resumenProvincia = useMemo(() => {
-    const m: Record<string, { count: number; deuda: number }> = {};
-    clientes.filter(c => c.saldo_cuenta_corriente < 0).forEach(c => {
-      const p = c.provincia || 'Sin provincia';
-      if (!m[p]) m[p] = { count: 0, deuda: 0 };
-      m[p].count++;
-      m[p].deuda += Math.abs(c.saldo_cuenta_corriente);
+  // Resumen de deuda por vendedor (solo clientes con deuda dentro del universo filtrado)
+  const resumenVendedor = useMemo(() => {
+    const m: Record<string, { nombre: string; count: number; deuda: number }> = {};
+    universo.filter(c => c.saldo_cuenta_corriente < 0).forEach(c => {
+      const vid = c.vendedor_id || '__sin__';
+      const nombre = vid === '__sin__' ? 'Sin vendedor' : (vendedorById[vid]?.nombre || 'Sin vendedor');
+      if (!m[vid]) m[vid] = { nombre, count: 0, deuda: 0 };
+      m[vid].count++;
+      m[vid].deuda += Math.abs(c.saldo_cuenta_corriente);
     });
-    return Object.entries(m).sort((a, b) => b[1].deuda - a[1].deuda).slice(0, 10);
-  }, [clientes]);
+    return Object.values(m).sort((a, b) => b.deuda - a.deuda);
+  }, [universo, vendedorById]);
 
   if (loading) {
     return (
@@ -116,8 +123,8 @@ export default function ModuloCobranzas() {
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <div className="bg-white rounded-xl border p-4">
-          <p className="text-2xl font-bold text-gray-800">{clientes.length}</p>
-          <p className="text-xs text-gray-500">Clientes totales</p>
+          <p className="text-2xl font-bold text-gray-800">{universo.length}</p>
+          <p className="text-xs text-gray-500">Clientes con saldo</p>
         </div>
         <div className="bg-verde-ok-claro rounded-xl border border-verde-ok/30 p-4">
           <p className="text-2xl font-bold text-verde-ok">{cantAlDia}</p>
@@ -146,17 +153,21 @@ export default function ModuloCobranzas() {
         Se puede sobrescribir manualmente desde el selector de cada fila.
       </div>
 
-      {/* Ranking por provincia */}
+      {/* Resumen de deuda por vendedor */}
       <div className="bg-white rounded-xl border p-5">
-        <h3 className="font-semibold text-gray-800 mb-3">Ranking de deuda por provincia</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-          {resumenProvincia.map(([prov, data]) => (
-            <div key={prov} className="flex justify-between border-b pb-1">
-              <span className="text-gray-700">{prov} <span className="text-gray-400">({data.count})</span></span>
-              <span className="font-medium text-rojo">{formatCurrency(data.deuda)}</span>
-            </div>
-          ))}
-        </div>
+        <h3 className="font-semibold text-gray-800 mb-3">Resumen de deuda por vendedor</h3>
+        {resumenVendedor.length === 0 ? (
+          <p className="text-sm text-gray-500">Sin deuda en el filtro seleccionado</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+            {resumenVendedor.map(v => (
+              <div key={v.nombre} className="flex justify-between border-b pb-1">
+                <span className="text-gray-700">{v.nombre} <span className="text-gray-400">({v.count})</span></span>
+                <span className="font-medium text-rojo">{formatCurrency(v.deuda)}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Filtros + búsqueda */}

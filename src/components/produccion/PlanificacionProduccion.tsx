@@ -15,7 +15,7 @@ export default function PlanificacionProduccion() {
     d.setDate(d.getDate() + 30);
     return d.toISOString().split('T')[0];
   });
-  const [estadosIncluidos, setEstadosIncluidos] = useState<Set<string>>(new Set(['pendiente', 'aprobado']));
+  const [estadosIncluidos, setEstadosIncluidos] = useState<Set<string>>(new Set(['pendiente', 'aprobado', 'enviado', 'en_produccion']));
 
   useEffect(() => {
     fetch('/api/pedidos').then(r => r.json()).then(setPedidos).catch(() => {}).finally(() => setLoading(false));
@@ -80,10 +80,10 @@ export default function PlanificacionProduccion() {
           <input type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="px-3 py-1.5 border rounded-lg text-sm text-gray-800" />
         </div>
         <div className="flex gap-2 flex-wrap">
-          {['pendiente', 'aprobado', 'enviado'].map(e => (
+          {['pendiente', 'aprobado', 'enviado', 'en_produccion', 'entregado', 'finalizado'].map(e => (
             <label key={e} className="flex items-center gap-1.5 text-sm cursor-pointer">
               <input type="checkbox" checked={estadosIncluidos.has(e)} onChange={() => toggleEstado(e)} className="w-4 h-4 text-verde-oscuro rounded" />
-              <span className="text-gray-700 capitalize">{e}</span>
+              <span className="text-gray-700 capitalize">{e.replace('_', ' ')}</span>
             </label>
           ))}
         </div>

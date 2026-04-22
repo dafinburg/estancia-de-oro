@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Pedido, EstadoPedido, LineaPedido } from '@/types';
+import { Pedido, EstadoPedido, LineaPedido, Producto, ListaPrecio } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/format';
 
 // Pantalla de detalle + edición de pedido para el back-office.
@@ -32,13 +32,34 @@ export default function EditarPedidoGestion() {
   const [notas, setNotas] = useState('');
   const [lineas, setLineas] = useState<LineaPedido[]>([]);
 
+  // Catálogo para agregar líneas nuevas
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [listaPrecio, setListaPrecio] = useState<ListaPrecio | null>(null);
+  const [mostrarAgregar, setMostrarAgregar] = useState(false);
+  const [busquedaProd, setBusquedaProd] = useState('');
+
   useEffect(() => {
     const cargar = async () => {
       try {
-        const res = await fetch('/api/pedidos');
-        const pedidos: Pedido[] = await res.json();
+        const [resP, resProds, resClientes, resListas] = await Promise.all([
+          fetch('/api/pedidos'),
+          fetch('/api/productos').catch(() => null),
+          fetch('/api/clientes').catch(() => null),
+          fetch('/api/listas-precio').catch(() => null),
+        ]);
+        const pedidos: Pedido[] = await resP.json();
         const encontrado = pedidos.find((p) => p.id === id) || null;
         setPedido(encontrado);
+        if (resProds) { try { setProductos(await resProds.json()); } catch {} }
+        if (encontrado && resClientes && resListas) {
+          try {
+            const clientes = await resClientes.json();
+            const listas: ListaPrecio[] = await resListas.json();
+            const cli = Array.isArray(clientes) ? clientes.find((c: { id: string }) => c.id === encontrado.cliente_id) : null;
+            const lpId = cli?.lista_precio_id || 'lp_general';
+            setListaPrecio(listas.find(l => l.id === lpId) || listas[0] || null);
+          } catch {}
+        }
         if (encontrado) {
           setFechaEntrega(encontrado.fecha_entrega || '');
           setDireccionEntrega(encontrado.direccion_entrega || '');
@@ -82,6 +103,39 @@ export default function EditarPedidoGestion() {
       return nuevas;
     });
   };
+
+  const agregarLinea = (p: Producto) => {
+    const precio = listaPrecio?.precios.find(pr => pr.producto_id === p.id)?.precio || 0;
+    const nueva: LineaPedido = recalcular({
+      producto_id: p.id,
+      codigo: p.codigo,
+      descripcion: p.descripcion,
+      unidades_por_caja: p.unidades_por_caja || 1,
+      cajas: 0,
+      cantidad: 1,
+      kg_aprox: 0,
+      precio_unitario: precio,
+      precio_lista: precio,
+      precio_bonificado: precio,
+      descuento_porcentaje: 0,
+      subtotal: precio,
+    });
+    setLineas(prev => [...prev, nueva]);
+    setMostrarAgregar(false);
+    setBusquedaProd('');
+  };
+
+  const eliminarLinea = (i: number) => {
+    setLineas(prev => prev.filter((_, idx) => idx !== i));
+  };
+
+  const productosFiltrados = productos.filter(p => {
+    if (!p.activo) return false;
+    if (lineas.some(l => l.producto_id === p.id)) return false;
+    if (!busquedaProd) return true;
+    const q = busquedaProd.toLowerCase();
+    return p.descripcion.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q);
+  }).slice(0, 50);
 
   const total = lineas.reduce((s, l) => s + (l.subtotal || 0), 0);
 
@@ -162,11 +216,17 @@ export default function EditarPedidoGestion() {
     pendiente: { label: 'Pendiente', color: 'bg-amarillo-claro text-amber-800' },
     aprobado: { label: 'Aprobado', color: 'bg-verde-ok-claro text-verde-ok' },
     enviado: { label: 'Enviado', color: 'bg-blue-100 text-blue-800' },
+    en_produccion: { label: 'En producción', color: 'bg-purple-100 text-purple-800' },
+    entregado: { label: 'Entregado', color: 'bg-emerald-100 text-emerald-800' },
+    finalizado: { label: 'Finalizado', color: 'bg-gray-200 text-gray-700' },
   };
   const siguienteEstado: Record<EstadoPedido, EstadoPedido | null> = {
     pendiente: 'aprobado',
     aprobado: 'enviado',
-    enviado: null,
+    enviado: 'en_produccion',
+    en_produccion: 'entregado',
+    entregado: 'finalizado',
+    finalizado: null,
   };
 
   return (
@@ -274,6 +334,7 @@ export default function EditarPedidoGestion() {
                   <th className="text-right px-2 py-2 w-24">Precio</th>
                   <th className="text-right px-2 py-2 w-16">Desc %</th>
                   <th className="text-right px-2 py-2 w-28">Subtotal</th>
+                  {editando && <th className="w-8"></th>}
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -320,16 +381,69 @@ export default function EditarPedidoGestion() {
                       ) : (l.descuento_porcentaje ? `${l.descuento_porcentaje}%` : '—')}
                     </td>
                     <td className="px-2 py-2 text-right font-medium text-gray-800">{formatCurrency(l.subtotal)}</td>
+                    {editando && (
+                      <td className="px-2 py-2 text-center">
+                        <button onClick={() => eliminarLinea(i)} className="text-rojo hover:text-red-700 text-lg leading-none" title="Eliminar línea">×</button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="bg-gray-50 font-bold">
-                  <td colSpan={7} className="px-2 py-3 text-right text-gray-800">Total:</td>
+                  <td colSpan={editando ? 7 : 7} className="px-2 py-3 text-right text-gray-800">Total:</td>
                   <td className="px-2 py-3 text-right text-verde-oscuro text-lg">{formatCurrency(total)}</td>
+                  {editando && <td></td>}
                 </tr>
               </tfoot>
             </table>
+          </div>
+        )}
+        {editando && (
+          <div className="mt-3">
+            {!mostrarAgregar ? (
+              <button
+                onClick={() => setMostrarAgregar(true)}
+                className="px-3 py-2 bg-verde-oscuro text-white rounded-lg text-sm font-medium hover:bg-verde-claro"
+              >+ Agregar línea</button>
+            ) : (
+              <div className="border rounded-lg p-3 bg-gray-50">
+                <div className="flex items-center gap-2 mb-2">
+                  <input
+                    type="text"
+                    autoFocus
+                    value={busquedaProd}
+                    onChange={(e) => setBusquedaProd(e.target.value)}
+                    placeholder="Buscar producto por código o descripción..."
+                    className="flex-1 px-3 py-1.5 border rounded text-sm text-gray-800"
+                  />
+                  <button
+                    onClick={() => { setMostrarAgregar(false); setBusquedaProd(''); }}
+                    className="px-3 py-1.5 text-xs text-gray-600 hover:text-gray-800"
+                  >Cancelar</button>
+                </div>
+                <div className="max-h-60 overflow-y-auto divide-y bg-white border rounded">
+                  {productosFiltrados.length === 0 ? (
+                    <p className="p-3 text-sm text-gray-500 text-center">Sin resultados</p>
+                  ) : productosFiltrados.map(p => {
+                    const precio = listaPrecio?.precios.find(pr => pr.producto_id === p.id)?.precio || 0;
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => agregarLinea(p)}
+                        className="w-full text-left px-3 py-2 hover:bg-amarillo-claro text-sm flex justify-between gap-3"
+                      >
+                        <span>
+                          <span className="font-mono text-xs text-gray-500">{p.codigo}</span>
+                          <span className="ml-2 text-gray-800">{p.descripcion}</span>
+                        </span>
+                        <span className="text-gray-600 text-xs">{precio > 0 ? formatCurrency(precio) : 'sin precio'}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>

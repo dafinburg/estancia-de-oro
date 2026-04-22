@@ -37,6 +37,9 @@ export default function DetallePedido({ backHref = '/vendedor', newHref = '/vend
     pendiente: { label: 'Pendiente', color: 'bg-amarillo-claro text-amber-800' },
     aprobado: { label: 'Aprobado', color: 'bg-verde-ok-claro text-verde-ok' },
     enviado: { label: 'Enviado', color: 'bg-blue-100 text-blue-800' },
+    en_produccion: { label: 'En producción', color: 'bg-purple-100 text-purple-800' },
+    entregado: { label: 'Entregado', color: 'bg-emerald-100 text-emerald-800' },
+    finalizado: { label: 'Finalizado', color: 'bg-gray-200 text-gray-700' },
   };
 
   if (loading) {

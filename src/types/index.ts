@@ -77,7 +77,7 @@ export interface LineaPedido {
 }
 
 // Estado posible de un pedido
-export type EstadoPedido = 'pendiente' | 'aprobado' | 'enviado';
+export type EstadoPedido = 'pendiente' | 'aprobado' | 'enviado' | 'en_produccion' | 'entregado' | 'finalizado';
 
 export interface Pedido {
   id: string;
