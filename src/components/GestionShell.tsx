@@ -17,6 +17,7 @@ const MENU: MenuItem[] = [
   { href: '/gestion/produccion', label: 'Expedición', icon: '🚚', roles: ['admin', 'expedicion'] },
   { href: '/gestion/clientes', label: 'Clientes', icon: '👥', roles: ['admin'] },
   { href: '/gestion/productos', label: 'Productos', icon: '📦', roles: ['admin'] },
+  { href: '/gestion/admin', label: 'Datos maestros', icon: '⚙️', roles: ['admin'] },
 ];
 
 function Inner({ children }: { children: ReactNode }) {
