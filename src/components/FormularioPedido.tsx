@@ -1,15 +1,26 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { Cliente, Producto, ListaPrecio, LineaPedido, ResultadoValidacion, AlertaPedido } from '@/types';
+import { Cliente, Producto, ListaPrecio, LineaPedido, AlertaPedido } from '@/types';
 import { formatCurrency } from '@/lib/format';
 import { estadoCuentaDe, estadoLabel } from '@/lib/cliente';
-import PanelValidaciones from './PanelValidaciones';
 
-// Formulario de pedido — basado en el template real "NOTA DE PEDIDO"
-// Secciones: Datos, Cliente, Transporte, Productos (con cajas/kg), Notas
+/**
+ * Nueva Nota de Pedido — versión simplificada.
+ *
+ * Cambios vs versión anterior:
+ *   - Sin fecha de entrega (lo resuelve admin)
+ *   - Sin sección de transporte (lo resuelve admin)
+ *   - Cliente con combobox de typeahead
+ *   - Dirección de entrega en la sección Cliente, autocargada del maestro
+ *   - Tabla de productos manejada por UNIDADES (input principal) →
+ *     cajas y kg se calculan automáticamente
+ *   - "Precio especial" opcional en vez de % de descuento; si se usa,
+ *     genera alerta para el aprobador
+ *   - Un solo botón "Confirmar pedido"; validación inline con bordes rojos
+ */
 export default function FormularioPedido({ redirectBase = '/pedidos' }: { redirectBase?: string }) {
   const { vendedor } = useAuth();
   const router = useRouter();
@@ -20,24 +31,23 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
   const [listaPrecio, setListaPrecio] = useState<ListaPrecio | null>(null);
   const [loadingData, setLoadingData] = useState(true);
 
-  // --- Estados del formulario ---
+  // --- Estado del formulario ---
   const [clienteId, setClienteId] = useState('');
-  const [busquedaCliente, setBusquedaCliente] = useState('');
   const [fechaPedido, setFechaPedido] = useState(() => new Date().toISOString().split('T')[0]);
-  const [fechaEntrega, setFechaEntrega] = useState('');
-  const [transportista, setTransportista] = useState('');
-  const [direccionTransporte, setDireccionTransporte] = useState('');
-  const [telefonoTransporte, setTelefonoTransporte] = useState('');
   const [direccionEntrega, setDireccionEntrega] = useState('');
   const [notas, setNotas] = useState('');
   const [lineas, setLineas] = useState<LineaPedido[]>([crearLineaVacia()]);
 
   // --- UI ---
-  const [validaciones, setValidaciones] = useState<ResultadoValidacion[]>([]);
-  const [mostrarValidaciones, setMostrarValidaciones] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [saldoConfirmado, setSaldoConfirmado] = useState(false);
   const [modalSaldo, setModalSaldo] = useState(false);
+  const [mostrarErrores, setMostrarErrores] = useState(false);
+
+  // --- Cliente combobox ---
+  const [busquedaCliente, setBusquedaCliente] = useState('');
+  const [comboAbierto, setComboAbierto] = useState(false);
+  const comboRef = useRef<HTMLDivElement>(null);
 
   const clienteSeleccionado = clientes.find((c) => c.id === clienteId);
   const estadoCliente = clienteSeleccionado ? estadoCuentaDe(clienteSeleccionado) : null;
@@ -60,17 +70,32 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
     };
   }
 
-  // Helper: recalcular precio bonificado y subtotal a partir de precio_unitario + descuento
-  function recalcular(l: LineaPedido): LineaPedido {
-    const desc = Math.max(0, Math.min(100, l.descuento_porcentaje || 0));
-    const bonificado = +(l.precio_unitario * (1 - desc / 100)).toFixed(2);
+  // Recalcula cajas (derivada) y kg (derivada) a partir de unidades.
+  // Subtotal = unidades × precio_unitario.
+  function recalcular(l: LineaPedido, producto?: Producto): LineaPedido {
+    const upc = Math.max(1, l.unidades_por_caja || 1);
+    const cajas = l.cantidad > 0 ? +(l.cantidad / upc).toFixed(2) : 0;
+    const pesoProm = producto?.peso_promedio_kg ?? 0;
+    const kg = pesoProm > 0 ? +(l.cantidad * pesoProm).toFixed(2) : l.kg_aprox;
     return {
       ...l,
-      descuento_porcentaje: desc,
-      precio_bonificado: bonificado,
-      subtotal: +(l.cantidad * bonificado).toFixed(2),
+      cajas,
+      kg_aprox: kg,
+      precio_bonificado: l.precio_unitario, // sin descuento
+      descuento_porcentaje: 0,
+      subtotal: +(l.cantidad * l.precio_unitario).toFixed(2),
     };
   }
+
+  // Cerrar combo al click fuera
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (!comboRef.current) return;
+      if (!comboRef.current.contains(e.target as Node)) setComboAbierto(false);
+    }
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, []);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -94,70 +119,64 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
     cargar();
   }, [vendedor]);
 
-  // Al cambiar cliente: precargar datos
+  // Al cambiar cliente: precargar direccion entrega
   useEffect(() => {
     if (clienteSeleccionado) {
       setDireccionEntrega(clienteSeleccionado.direccion);
       setSaldoConfirmado(false);
-      // Si el cliente tiene lista propia diferente, cargarla
+      // Si el cliente tiene lista propia diferente, cargarla y recalcular precios
       if (clienteSeleccionado.lista_precio_id && clienteSeleccionado.lista_precio_id !== listaPrecio?.id) {
         fetch(`/api/listas-precio?id=${clienteSeleccionado.lista_precio_id}`)
           .then(r => r.json())
           .then(d => {
             setListaPrecio(d);
-            // Recalcular precios en líneas existentes
             setLineas(prev => prev.map(l => {
               if (!l.producto_id) return l;
               const precioItem = d.precios?.find((p: {producto_id: string; precio: number}) => p.producto_id === l.producto_id);
               const precioLista = precioItem?.precio || 0;
-              return recalcular({
-                ...l,
-                precio_lista: precioLista,
-                precio_unitario: precioLista,
-              });
+              const prod = productos.find(p => p.id === l.producto_id);
+              return recalcular({ ...l, precio_lista: precioLista, precio_unitario: precioLista }, prod);
             }));
           })
           .catch(() => {});
       }
     }
-  }, [clienteId, clienteSeleccionado, listaPrecio?.id]);
+  }, [clienteId, clienteSeleccionado, listaPrecio?.id, productos]);
 
   const getPrecioLista = useCallback((productoId: string): number => {
     if (!listaPrecio) return 0;
     return listaPrecio.precios.find((p) => p.producto_id === productoId)?.precio || 0;
   }, [listaPrecio]);
 
-  // Actualizar una línea
+  // --- Actualizar línea ---
   const actualizarLinea = (index: number, campo: keyof LineaPedido, valor: string | number) => {
     setLineas((prev) => {
       const nuevas = [...prev];
       const linea = { ...nuevas[index] };
+      let productoRef: Producto | undefined;
 
       if (campo === 'producto_id') {
         const producto = productos.find((p) => p.id === valor);
         if (producto) {
+          productoRef = producto;
           linea.producto_id = producto.id;
           linea.codigo = producto.codigo;
           linea.descripcion = producto.descripcion;
           linea.unidades_por_caja = producto.unidades_por_caja || 1;
           linea.precio_lista = getPrecioLista(producto.id);
           linea.precio_unitario = linea.precio_lista;
-          linea.cantidad = linea.cajas * linea.unidades_por_caja;
         }
-      } else if (campo === 'cajas') {
-        linea.cajas = Number(valor) || 0;
-        linea.cantidad = linea.cajas * linea.unidades_por_caja;
       } else if (campo === 'cantidad') {
         linea.cantidad = Number(valor) || 0;
-      } else if (campo === 'kg_aprox') {
-        linea.kg_aprox = Number(valor) || 0;
       } else if (campo === 'precio_unitario') {
         linea.precio_unitario = Number(valor) || 0;
-      } else if (campo === 'descuento_porcentaje') {
-        linea.descuento_porcentaje = Number(valor) || 0;
+      } else if (campo === 'kg_aprox') {
+        // Sólo editable si el producto no tiene peso_promedio_kg cargado
+        linea.kg_aprox = Number(valor) || 0;
       }
 
-      nuevas[index] = recalcular(linea);
+      const prod = productoRef || productos.find(p => p.id === linea.producto_id);
+      nuevas[index] = recalcular(linea, prod);
       return nuevas;
     });
   };
@@ -169,23 +188,23 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
   };
 
   const total = lineas.reduce((sum, l) => sum + l.subtotal, 0);
-  const totalCajas = lineas.reduce((sum, l) => sum + l.cajas, 0);
   const totalUnidades = lineas.reduce((sum, l) => sum + l.cantidad, 0);
+  const totalCajas = lineas.reduce((sum, l) => sum + l.cajas, 0);
   const totalKg = lineas.reduce((sum, l) => sum + l.kg_aprox, 0);
 
-  // Filtrar clientes por búsqueda (razón social o CUIT)
+  // Clientes filtrados para el combobox
   const clientesFiltrados = useMemo(() => {
-    if (!busquedaCliente.trim()) return clientes.slice(0, 100); // mostrar primeros 100 por defecto
-    const q = busquedaCliente.toLowerCase();
+    const q = busquedaCliente.toLowerCase().trim();
+    if (!q) return clientes.slice(0, 50);
     return clientes.filter(c =>
       c.razon_social.toLowerCase().includes(q) ||
       c.cuit?.includes(q) ||
       c.nombre_fantasia?.toLowerCase().includes(q) ||
       c.localidad?.toLowerCase().includes(q)
-    ).slice(0, 100);
+    ).slice(0, 50);
   }, [clientes, busquedaCliente]);
 
-  // Agrupar productos por categoría para el selector
+  // Agrupar productos por categoría
   const productosPorCategoria = useMemo(() => {
     const grupos: Record<string, Producto[]> = {};
     productos.forEach(p => {
@@ -196,96 +215,44 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
     return grupos;
   }, [productos]);
 
-  // --- Validaciones ---
-  const ejecutarValidaciones = useCallback((): ResultadoValidacion[] => {
-    const res: ResultadoValidacion[] = [];
-    if (!clienteId) {
-      res.push({ campo: 'Cliente', estado: 'error', mensaje: 'Debés seleccionar un cliente' });
-    } else {
-      res.push({ campo: 'Cliente', estado: 'ok', mensaje: 'Cliente seleccionado correctamente' });
-    }
-    if (!fechaEntrega) {
-      res.push({ campo: 'Fecha de entrega', estado: 'error', mensaje: 'Debés indicar una fecha de entrega' });
-    } else {
-      res.push({ campo: 'Fecha de entrega', estado: 'ok', mensaje: 'Fecha de entrega indicada' });
-    }
-    const validas = lineas.filter((l) => l.producto_id && l.cantidad > 0);
-    if (validas.length === 0) {
-      res.push({ campo: 'Productos', estado: 'error', mensaje: 'Agregá al menos un producto con cantidad > 0' });
-    } else {
-      res.push({ campo: 'Productos', estado: 'ok', mensaje: `${validas.length} producto(s) agregado(s)` });
-    }
-    lineas.forEach((l) => {
-      if (!l.producto_id || l.cantidad === 0) return;
-      if (l.precio_unitario <= 0) {
-        res.push({ campo: `Precio — ${l.descripcion}`, estado: 'error', mensaje: 'El precio no puede ser 0 o negativo' });
-      } else if (l.precio_unitario < l.precio_lista) {
-        const dif = l.precio_lista - l.precio_unitario;
-        res.push({
-          campo: `Precio — ${l.descripcion}`,
-          estado: 'warning',
-          mensaje: `Precio ${formatCurrency(dif)} por debajo de lista (${formatCurrency(l.precio_lista)})`,
-        });
-      }
+  // --- Validaciones inline ---
+  const errores = useMemo(() => {
+    const e: Record<string, string> = {};
+    if (!clienteId) e.cliente = 'Seleccioná un cliente';
+    if (!direccionEntrega.trim()) e.direccion = 'Indicá la dirección de entrega';
+    const validas = lineas.filter(l => l.producto_id && l.cantidad > 0);
+    if (validas.length === 0) e.productos = 'Agregá al menos un producto con unidades';
+    lineas.forEach((l, i) => {
+      if (!l.producto_id) return;
+      if (l.cantidad <= 0) e[`linea_${i}_unidades`] = 'Unidades debe ser > 0';
+      if (l.precio_unitario <= 0) e[`linea_${i}_precio`] = 'Precio debe ser > 0';
     });
-    if (clienteSeleccionado) {
-      const saldo = clienteSeleccionado.saldo_cuenta_corriente;
-      const est = estadoCuentaDe(clienteSeleccionado);
-      if (est === 'bloqueado') {
-        res.push({
-          campo: 'Estado cliente',
-          estado: 'error',
-          mensaje: `Cliente bloqueado — hablar con administración para aprobar el pedido.`,
-        });
-      } else if (est === 'observado') {
-        res.push({
-          campo: 'Estado cliente',
-          estado: 'warning',
-          mensaje: saldoConfirmado
-            ? `Cliente observado (saldo ${formatCurrency(Math.abs(saldo))}) — vendedor confirmó continuar`
-            : `Cliente observado (saldo ${formatCurrency(Math.abs(saldo))}) — confirmar para continuar`,
-        });
-      } else {
-        res.push({ campo: 'Estado cliente', estado: 'ok', mensaje: 'Cliente al día' });
-      }
-    }
-    return res;
-  }, [clienteId, fechaEntrega, lineas, clienteSeleccionado, saldoConfirmado]);
+    return e;
+  }, [clienteId, direccionEntrega, lineas]);
 
-  useEffect(() => {
-    if (mostrarValidaciones) setValidaciones(ejecutarValidaciones());
-  }, [mostrarValidaciones, ejecutarValidaciones]);
-
-  const puedeEnviar = (): boolean => {
-    if (clienteBloqueado) return false;
-    const vals = ejecutarValidaciones();
-    if (vals.some((v) => v.estado === 'error')) return false;
-    const obsW = vals.find((v) => v.campo === 'Estado cliente' && v.estado === 'warning');
-    if (obsW && !saldoConfirmado && estadoCliente === 'observado') return false;
-    return true;
-  };
+  const tieneErrores = Object.keys(errores).length > 0;
+  const err = (k: string): string | undefined => mostrarErrores ? errores[k] : undefined;
 
   const handleSubmit = async () => {
-    setMostrarValidaciones(true);
-    const vals = ejecutarValidaciones();
-    setValidaciones(vals);
-
-    if (clienteBloqueado) return; // no se envía jamás — hay un banner arriba
+    setMostrarErrores(true);
+    if (tieneErrores) return;
+    if (clienteBloqueado) return;
 
     if (estadoCliente === 'observado' && !saldoConfirmado) {
       setModalSaldo(true);
       return;
     }
-    if (!puedeEnviar()) return;
 
     setEnviando(true);
     try {
       const alertas: AlertaPedido[] = [];
       lineas.forEach((l) => {
-        if (l.producto_id && l.cantidad > 0 && l.precio_unitario < l.precio_lista) {
+        if (l.producto_id && l.cantidad > 0 && l.precio_unitario !== l.precio_lista && l.precio_lista > 0) {
+          const dif = l.precio_lista - l.precio_unitario;
+          const signo = dif > 0 ? 'menor' : 'mayor';
           alertas.push({
             tipo: 'precio_bajo',
-            mensaje: `${l.descripcion}: precio ${formatCurrency(l.precio_unitario)} vs lista ${formatCurrency(l.precio_lista)}`,
+            mensaje: `${l.descripcion}: precio especial ${formatCurrency(l.precio_unitario)} (${formatCurrency(Math.abs(dif))} ${signo} que lista ${formatCurrency(l.precio_lista)})`,
             nivel: 'warning',
           });
         }
@@ -306,11 +273,11 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
         cliente_razon_social: clienteSeleccionado!.razon_social,
         cliente_telefono: clienteSeleccionado!.telefono || '',
         fecha_pedido: fechaPedido,
-        fecha_entrega: fechaEntrega,
+        fecha_entrega: '', // lo completa admin
         condicion_pago: clienteSeleccionado!.condicion_pago,
-        transportista,
-        direccion_transporte: direccionTransporte,
-        telefono_transporte: telefonoTransporte,
+        transportista: '',
+        direccion_transporte: '',
+        telefono_transporte: '',
         direccion_entrega: direccionEntrega,
         lineas: lineasValidas,
         total,
@@ -339,6 +306,18 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
     }
   };
 
+  const seleccionarCliente = (c: Cliente) => {
+    setClienteId(c.id);
+    setBusquedaCliente(c.razon_social);
+    setComboAbierto(false);
+  };
+  const limpiarCliente = () => {
+    setClienteId('');
+    setBusquedaCliente('');
+    setDireccionEntrega('');
+    setComboAbierto(true);
+  };
+
   if (loadingData) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -355,21 +334,11 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
       {/* Datos del pedido */}
       <section className="bg-white rounded-xl shadow-sm border p-5 space-y-4">
         <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Datos del pedido</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
             <input type="date" value={fechaPedido} onChange={(e) => setFechaPedido(e.target.value)}
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-800" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Fecha de entrega <span className="text-rojo">*</span>
-            </label>
-            <input type="date" value={fechaEntrega} onChange={(e) => setFechaEntrega(e.target.value)}
-              min={fechaPedido}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-800 ${
-                mostrarValidaciones && !fechaEntrega ? 'border-rojo' : ''
-              }`} />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Vendedor</label>
@@ -379,218 +348,248 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
         </div>
       </section>
 
-      {/* Cliente */}
+      {/* Cliente + dirección de entrega */}
       <section className="bg-white rounded-xl shadow-sm border p-5 space-y-4">
         <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Cliente</h3>
-        <div>
+
+        {/* Combobox cliente */}
+        <div ref={comboRef} className="relative">
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Buscar cliente (razón social / CUIT / localidad)
+            Buscar cliente <span className="text-rojo">*</span>
           </label>
-          <input type="text" value={busquedaCliente} onChange={(e) => setBusquedaCliente(e.target.value)}
-            placeholder="Escribí para filtrar..."
-            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-verde-oscuro outline-none mb-2 text-gray-800" />
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Seleccionar cliente <span className="text-rojo">*</span> ({clientesFiltrados.length} de {clientes.length})
-          </label>
-          <select value={clienteId} onChange={(e) => setClienteId(e.target.value)}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-800 ${
-              mostrarValidaciones && !clienteId ? 'border-rojo' : ''
-            }`}>
-            <option value="">— Seleccionar cliente —</option>
-            {clientesFiltrados.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.razon_social}{c.localidad ? ` — ${c.localidad}` : ''}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <input
+              type="text"
+              value={busquedaCliente}
+              onChange={(e) => { setBusquedaCliente(e.target.value); setComboAbierto(true); if (clienteId) setClienteId(''); }}
+              onFocus={() => setComboAbierto(true)}
+              placeholder="Razón social, CUIT, localidad..."
+              className={`w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-800 ${
+                err('cliente') ? 'border-rojo' : ''
+              }`}
+            />
+            {clienteId && (
+              <button type="button" onClick={limpiarCliente}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 p-1"
+                title="Limpiar">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+          {err('cliente') && <p className="text-xs text-rojo mt-1">{err('cliente')}</p>}
+
+          {comboAbierto && !clienteId && (
+            <div className="absolute z-20 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-80 overflow-y-auto">
+              {clientesFiltrados.length === 0 ? (
+                <div className="px-3 py-4 text-sm text-gray-500 text-center">Sin resultados</div>
+              ) : (
+                clientesFiltrados.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => seleccionarCliente(c)}
+                    className="w-full text-left px-3 py-2 hover:bg-gray-100 border-b last:border-b-0 text-sm"
+                  >
+                    <div className="font-medium text-gray-800">{c.razon_social}</div>
+                    <div className="text-xs text-gray-500">
+                      {c.cuit || '—'}{c.localidad ? ` · ${c.localidad}` : ''}{c.provincia ? `, ${c.provincia}` : ''}
+                    </div>
+                  </button>
+                ))
+              )}
+              {clientes.length > clientesFiltrados.length && (
+                <div className="px-3 py-2 text-xs text-gray-400 bg-gray-50 border-t">
+                  Mostrando {clientesFiltrados.length} de {clientes.length} — afiná la búsqueda
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
+        {/* Banner estado cliente */}
         {clienteSeleccionado && estadoCliente === 'bloqueado' && (
           <div className="bg-rojo-claro border-2 border-rojo rounded-lg p-4 flex items-start gap-3">
             <span className="text-2xl">🚫</span>
             <div className="flex-1">
               <p className="font-bold text-rojo">Cliente bloqueado</p>
               <p className="text-sm text-red-800 mt-1">
-                No se puede generar el pedido. <strong>Hablar con administración para aprobar el pedido.</strong>
+                No se puede generar el pedido. <strong>Hablar con administración para aprobar.</strong>
               </p>
             </div>
           </div>
         )}
-
         {clienteSeleccionado && estadoCliente === 'observado' && (
           <div className="bg-amarillo-claro border-2 border-amarillo rounded-lg p-4 flex items-start gap-3">
             <span className="text-2xl">⚠</span>
             <div className="flex-1">
               <p className="font-bold text-amber-900">Cliente observado</p>
               <p className="text-sm text-amber-800 mt-1">
-                El cliente tiene saldo pendiente. Podés avanzar con el pedido pero se va a dejar nota automática.
+                Tiene saldo pendiente. Podés avanzar, se deja nota automática.
               </p>
             </div>
           </div>
         )}
-
         {clienteSeleccionado && estadoCliente === 'al_dia' && (
           <div className="bg-verde-ok-claro border border-verde-ok/40 rounded-lg px-4 py-2 text-sm text-verde-ok font-medium">
             ✓ Cliente {estadoLabel[estadoCliente]} — podés avanzar con el pedido.
           </div>
         )}
 
+        {/* Datos del cliente + dirección de entrega editable */}
         {clienteSeleccionado && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-gray-50 rounded-lg p-4 text-sm">
-            <div><span className="text-gray-500">Razón social:</span> <span className="font-medium text-gray-800">{clienteSeleccionado.razon_social}</span></div>
-            <div><span className="text-gray-500">CUIT:</span> <span className="font-medium text-gray-800">{clienteSeleccionado.cuit || '—'}</span></div>
-            <div><span className="text-gray-500">Teléfono:</span> <span className="font-medium text-gray-800">{clienteSeleccionado.telefono || '—'}</span></div>
-            <div><span className="text-gray-500">Localidad:</span> <span className="font-medium text-gray-800">{clienteSeleccionado.localidad || '—'}, {clienteSeleccionado.provincia || ''}</span></div>
-            <div className="md:col-span-2"><span className="text-gray-500">Dirección:</span> <span className="font-medium text-gray-800">{clienteSeleccionado.direccion}</span></div>
-            <div><span className="text-gray-500">Condición de pago:</span> <span className="font-medium text-gray-800">{clienteSeleccionado.condicion_pago}</span></div>
-            <div>
-              <span className="text-gray-500">Saldo CC:</span>
-              <span className={`ml-2 font-bold ${
-                clienteSeleccionado.saldo_cuenta_corriente < -50000 ? 'text-rojo' :
-                clienteSeleccionado.saldo_cuenta_corriente < 0 ? 'text-amber-600' : 'text-verde-ok'
-              }`}>
-                {formatCurrency(clienteSeleccionado.saldo_cuenta_corriente)}
-              </span>
-              {clienteSeleccionado.saldo_cuenta_corriente < -50000 && (
-                <span className="ml-2 text-xs bg-rojo text-white px-2 py-0.5 rounded-full">BLOQUEADO</span>
-              )}
-              {clienteSeleccionado.saldo_cuenta_corriente < 0 && clienteSeleccionado.saldo_cuenta_corriente >= -50000 && (
-                <span className="ml-2 text-xs bg-amarillo text-amber-900 px-2 py-0.5 rounded-full">Saldo vencido</span>
-              )}
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-gray-50 rounded-lg p-4 text-sm">
+              <div><span className="text-gray-500">Razón social:</span> <span className="font-medium text-gray-800">{clienteSeleccionado.razon_social}</span></div>
+              <div><span className="text-gray-500">CUIT:</span> <span className="font-medium text-gray-800">{clienteSeleccionado.cuit || '—'}</span></div>
+              <div><span className="text-gray-500">Teléfono:</span> <span className="font-medium text-gray-800">{clienteSeleccionado.telefono || '—'}</span></div>
+              <div><span className="text-gray-500">Localidad:</span> <span className="font-medium text-gray-800">{clienteSeleccionado.localidad || '—'}{clienteSeleccionado.provincia ? `, ${clienteSeleccionado.provincia}` : ''}</span></div>
+              <div><span className="text-gray-500">Condición de pago:</span> <span className="font-medium text-gray-800">{clienteSeleccionado.condicion_pago}</span></div>
+              <div>
+                <span className="text-gray-500">Saldo CC:</span>
+                <span className={`ml-2 font-bold ${
+                  clienteSeleccionado.saldo_cuenta_corriente < -50000 ? 'text-rojo' :
+                  clienteSeleccionado.saldo_cuenta_corriente < 0 ? 'text-amber-600' : 'text-verde-ok'
+                }`}>
+                  {formatCurrency(clienteSeleccionado.saldo_cuenta_corriente)}
+                </span>
+              </div>
             </div>
-          </div>
-        )}
-      </section>
 
-      {/* Transporte */}
-      <section className="bg-white rounded-xl shadow-sm border p-5 space-y-4">
-        <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Transporte / Re-despacho</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del transporte</label>
-            <input type="text" value={transportista} onChange={(e) => setTransportista(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-800"
-              placeholder="Nombre del transporte" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono transporte (con prefijo)</label>
-            <input type="text" value={telefonoTransporte} onChange={(e) => setTelefonoTransporte(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-800"
-              placeholder="Ej: 0381-4123456" />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Dirección del transporte de re-despacho</label>
-            <input type="text" value={direccionTransporte} onChange={(e) => setDireccionTransporte(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-800"
-              placeholder="Dirección de la terminal / transporte" />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Dirección de entrega del pedido</label>
-            <input type="text" value={direccionEntrega} onChange={(e) => setDireccionEntrega(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-800" />
-          </div>
-        </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Dirección de entrega <span className="text-rojo">*</span>
+              </label>
+              <input
+                type="text"
+                value={direccionEntrega}
+                onChange={(e) => setDireccionEntrega(e.target.value)}
+                placeholder="Se autocompleta con la dirección del cliente"
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-800 ${
+                  err('direccion') ? 'border-rojo' : ''
+                }`}
+              />
+              {err('direccion') && <p className="text-xs text-rojo mt-1">{err('direccion')}</p>}
+            </div>
+          </>
+        )}
       </section>
 
       {/* Productos */}
       <section className="bg-white rounded-xl shadow-sm border p-5 space-y-4">
-        <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Productos por líneas</h3>
+        <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">Productos</h3>
+        {err('productos') && <p className="text-sm text-rojo bg-rojo-claro px-3 py-2 rounded">{err('productos')}</p>}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[980px]">
+          <table className="w-full text-sm min-w-[900px]">
             <thead>
               <tr className="bg-gray-50 text-gray-600 text-xs">
-                <th className="text-left px-2 py-2 font-medium w-20">Código</th>
                 <th className="text-left px-2 py-2 font-medium">Producto</th>
-                <th className="text-right px-2 py-2 font-medium w-16">U/Caja</th>
-                <th className="text-right px-2 py-2 font-medium w-16">Cajas</th>
-                <th className="text-right px-2 py-2 font-medium w-20">Unidades</th>
-                <th className="text-right px-2 py-2 font-medium w-20">Kg aprox</th>
-                <th className="text-right px-2 py-2 font-medium w-24">$ x Kg/U</th>
-                <th className="text-right px-2 py-2 font-medium w-16">Desc %</th>
+                <th className="text-right px-2 py-2 font-medium w-28 text-verde-oscuro">Unidades *</th>
+                <th className="text-right px-2 py-2 font-medium w-20">Cajas</th>
+                <th className="text-right px-2 py-2 font-medium w-24">Kg aprox</th>
+                <th className="text-right px-2 py-2 font-medium w-28">$ x Kg/U</th>
                 <th className="text-right px-2 py-2 font-medium w-28">Subtotal</th>
                 <th className="w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {lineas.map((linea, index) => (
-                <tr key={index} className="hover:bg-gray-50">
-                  <td className="px-2 py-2 font-mono text-xs text-gray-600">{linea.codigo || '—'}</td>
-                  <td className="px-2 py-2">
-                    <select value={linea.producto_id} onChange={(e) => actualizarLinea(index, 'producto_id', e.target.value)}
-                      className="w-full px-2 py-1.5 border rounded text-xs focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-800">
-                      <option value="">— Seleccionar —</option>
-                      {Object.entries(productosPorCategoria).map(([cat, prods]) => (
-                        <optgroup key={cat} label={cat}>
-                          {prods.map((p) => (
-                            <option key={p.id} value={p.id}>{p.descripcion}</option>
-                          ))}
-                        </optgroup>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-2 py-2 text-right text-gray-600 text-xs">{linea.unidades_por_caja}</td>
-                  <td className="px-2 py-2">
-                    <input type="number" min="0" value={linea.cajas || ''}
-                      onChange={(e) => actualizarLinea(index, 'cajas', e.target.value)}
-                      className="w-full px-2 py-1.5 border rounded text-right text-xs focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-800" />
-                  </td>
-                  <td className="px-2 py-2">
-                    <input type="number" min="0" value={linea.cantidad || ''}
-                      onChange={(e) => actualizarLinea(index, 'cantidad', e.target.value)}
-                      className="w-full px-2 py-1.5 border rounded text-right text-xs focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-800" />
-                  </td>
-                  <td className="px-2 py-2">
-                    <input type="number" min="0" step="0.1" value={linea.kg_aprox || ''}
-                      onChange={(e) => actualizarLinea(index, 'kg_aprox', e.target.value)}
-                      className="w-full px-2 py-1.5 border rounded text-right text-xs focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-800" />
-                  </td>
-                  <td className="px-2 py-2">
-                    <input type="number" min="0" step="0.01" value={linea.precio_unitario || ''}
-                      onChange={(e) => actualizarLinea(index, 'precio_unitario', e.target.value)}
-                      className={`w-full px-2 py-1.5 border rounded text-right text-xs focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-800 ${
-                        linea.producto_id && linea.precio_unitario > 0 && linea.precio_unitario < linea.precio_lista
-                          ? 'border-amarillo bg-amarillo-claro'
-                          : linea.producto_id && linea.precio_unitario <= 0 && linea.cantidad > 0
-                          ? 'border-rojo bg-rojo-claro' : ''
-                      }`} />
-                    {linea.producto_id && linea.precio_unitario > 0 && linea.precio_unitario < linea.precio_lista && (
-                      <span className="block text-[10px] text-amber-600 mt-0.5">Lista: {formatCurrency(linea.precio_lista)}</span>
-                    )}
-                  </td>
-                  <td className="px-2 py-2">
-                    <input type="number" min="0" max="100" step="0.5" value={linea.descuento_porcentaje || ''}
-                      onChange={(e) => actualizarLinea(index, 'descuento_porcentaje', e.target.value)}
-                      placeholder="0"
-                      className={`w-full px-2 py-1.5 border rounded text-right text-xs focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-800 ${
-                        linea.descuento_porcentaje > 0 ? 'border-amarillo bg-amarillo-claro' : ''
-                      }`} />
-                    {linea.descuento_porcentaje > 0 && (
-                      <span className="block text-[10px] text-amber-700 mt-0.5">
-                        → {formatCurrency(linea.precio_bonificado)}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-2 py-2 text-right font-medium text-gray-800 text-xs">
-                    {linea.subtotal > 0 ? formatCurrency(linea.subtotal) : '—'}
-                  </td>
-                  <td className="px-2 py-2">
-                    <button onClick={() => eliminarLinea(index)} disabled={lineas.length <= 1}
-                      className="text-rojo hover:text-red-800 disabled:opacity-30 disabled:cursor-not-allowed p-1" title="Eliminar línea">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {lineas.map((linea, index) => {
+                const prod = productos.find(p => p.id === linea.producto_id);
+                const tienePesoProm = !!(prod?.peso_promedio_kg && prod.peso_promedio_kg > 0);
+                const precioEspecial = linea.producto_id && linea.precio_unitario > 0 && linea.precio_lista > 0 && linea.precio_unitario !== linea.precio_lista;
+                return (
+                  <tr key={index} className="hover:bg-gray-50">
+                    {/* Producto */}
+                    <td className="px-2 py-2">
+                      <select value={linea.producto_id} onChange={(e) => actualizarLinea(index, 'producto_id', e.target.value)}
+                        className="w-full px-2 py-1.5 border rounded text-xs focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-800">
+                        <option value="">— Seleccionar —</option>
+                        {Object.entries(productosPorCategoria).map(([cat, prods]) => (
+                          <optgroup key={cat} label={cat}>
+                            {prods.map((p) => (
+                              <option key={p.id} value={p.id}>{p.descripcion}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                      {linea.codigo && <span className="block text-[10px] text-gray-500 mt-0.5 font-mono">{linea.codigo}</span>}
+                    </td>
+
+                    {/* Unidades (principal, más grande) */}
+                    <td className="px-2 py-2">
+                      <input
+                        type="number" min="0" step="1" value={linea.cantidad || ''}
+                        onChange={(e) => actualizarLinea(index, 'cantidad', e.target.value)}
+                        className={`w-full px-2 py-2 border-2 rounded text-right text-base font-semibold focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-900 ${
+                          err(`linea_${index}_unidades`) ? 'border-rojo' : linea.producto_id ? 'border-verde-oscuro' : 'border-gray-300'
+                        }`}
+                      />
+                    </td>
+
+                    {/* Cajas (derivado) */}
+                    <td className="px-2 py-2 text-right text-xs text-gray-600">
+                      {linea.producto_id ? (
+                        <>
+                          <div className="font-medium">{linea.cajas}</div>
+                          <div className="text-[10px] text-gray-400">({linea.unidades_por_caja}/caja)</div>
+                        </>
+                      ) : '—'}
+                    </td>
+
+                    {/* Kg (auto si hay peso_promedio_kg, si no editable) */}
+                    <td className="px-2 py-2">
+                      {tienePesoProm ? (
+                        <div className="text-right text-xs text-gray-700">
+                          <div className="font-medium">{linea.kg_aprox.toFixed(2)}</div>
+                          <div className="text-[10px] text-gray-400">({prod?.peso_promedio_kg} kg/u)</div>
+                        </div>
+                      ) : (
+                        <input type="number" min="0" step="0.1" value={linea.kg_aprox || ''}
+                          onChange={(e) => actualizarLinea(index, 'kg_aprox', e.target.value)}
+                          className="w-full px-2 py-1.5 border rounded text-right text-xs focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-800" />
+                      )}
+                    </td>
+
+                    {/* Precio (con posibilidad de "precio especial") */}
+                    <td className="px-2 py-2">
+                      <input type="number" min="0" step="0.01" value={linea.precio_unitario || ''}
+                        onChange={(e) => actualizarLinea(index, 'precio_unitario', e.target.value)}
+                        className={`w-full px-2 py-1.5 border rounded text-right text-xs focus:ring-2 focus:ring-verde-oscuro outline-none text-gray-800 ${
+                          err(`linea_${index}_precio`) ? 'border-rojo bg-rojo-claro' :
+                          precioEspecial ? 'border-amarillo bg-amarillo-claro' : ''
+                        }`} />
+                      {precioEspecial && (
+                        <span className="block text-[10px] text-amber-700 mt-0.5">
+                          Precio especial · lista {formatCurrency(linea.precio_lista)}
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Subtotal */}
+                    <td className="px-2 py-2 text-right font-medium text-gray-800 text-xs">
+                      {linea.subtotal > 0 ? formatCurrency(linea.subtotal) : '—'}
+                    </td>
+
+                    {/* Eliminar */}
+                    <td className="px-2 py-2">
+                      <button onClick={() => eliminarLinea(index)} disabled={lineas.length <= 1}
+                        className="text-rojo hover:text-red-800 disabled:opacity-30 disabled:cursor-not-allowed p-1" title="Eliminar línea">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot>
               <tr className="bg-gray-50 font-semibold text-gray-700">
-                <td colSpan={3} className="px-2 py-2 text-right text-xs">Totales:</td>
-                <td className="px-2 py-2 text-right text-xs">{totalCajas}</td>
-                <td className="px-2 py-2 text-right text-xs">{totalUnidades}</td>
+                <td className="px-2 py-2 text-right text-xs">Totales:</td>
+                <td className="px-2 py-2 text-right text-sm text-verde-oscuro">{totalUnidades}</td>
+                <td className="px-2 py-2 text-right text-xs">{totalCajas.toFixed(2)}</td>
                 <td className="px-2 py-2 text-right text-xs">{totalKg.toFixed(1)} kg</td>
-                <td></td>
                 <td></td>
                 <td className="px-2 py-2 text-right text-verde-oscuro text-sm">{formatCurrency(total)}</td>
                 <td></td>
@@ -607,7 +606,7 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
             Agregar producto
           </button>
           <div className="text-right">
-            <span className="text-gray-500 text-sm">Total del pedido:</span>
+            <span className="text-gray-500 text-sm">Total:</span>
             <p className="text-2xl font-bold text-verde-oscuro">{formatCurrency(total)}</p>
           </div>
         </div>
@@ -621,23 +620,23 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
           placeholder="Observaciones o notas para este pedido..." />
       </section>
 
-      {mostrarValidaciones && (
-        <section>
-          <h3 className="text-lg font-semibold text-gray-800 mb-3">Resumen de validaciones</h3>
-          <PanelValidaciones validaciones={validaciones} />
-        </section>
-      )}
-
-      <div className="flex flex-col sm:flex-row gap-3 justify-end no-print">
+      {/* Confirmar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 no-print">
+        <div>
+          {mostrarErrores && tieneErrores && (
+            <p className="text-sm text-rojo font-medium">
+              Revisá los campos marcados en rojo
+            </p>
+          )}
+        </div>
         <button
-          onClick={() => { setMostrarValidaciones(true); setValidaciones(ejecutarValidaciones()); }}
-          className="px-6 py-2.5 border-2 border-verde-oscuro text-verde-oscuro rounded-lg font-medium hover:bg-verde-oscuro hover:text-white transition-colors"
-        >Validar pedido</button>
-        <button
-          onClick={handleSubmit} disabled={enviando || clienteBloqueado}
-          title={clienteBloqueado ? 'Cliente bloqueado — no se puede generar el pedido' : ''}
-          className="px-6 py-2.5 bg-verde-oscuro text-white rounded-lg font-medium hover:bg-verde-claro transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >{enviando ? 'Guardando...' : clienteBloqueado ? 'Cliente bloqueado' : 'Confirmar pedido'}</button>
+          onClick={handleSubmit}
+          disabled={enviando || clienteBloqueado}
+          title={clienteBloqueado ? 'Cliente bloqueado' : ''}
+          className="px-8 py-3 bg-verde-oscuro text-white rounded-lg font-semibold hover:bg-verde-claro transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-base shadow-sm"
+        >
+          {enviando ? 'Guardando...' : clienteBloqueado ? 'Cliente bloqueado' : 'Confirmar pedido'}
+        </button>
       </div>
 
       {modalSaldo && clienteSeleccionado && (

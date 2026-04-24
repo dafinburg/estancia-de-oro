@@ -12,7 +12,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { Pedido, Cliente, Vendedor, ListaPrecio, EstadoCuenta, LineaPedido, AlertaPedido } from '@/types';
+import { Pedido, Cliente, Vendedor, ListaPrecio, EstadoCuenta, LineaPedido, AlertaPedido, Producto } from '@/types';
 import { cached, invalidate } from '@/lib/cache';
 import * as br from '@/lib/baserow';
 import { TABLES } from '@/lib/baserow.config';
@@ -498,6 +498,39 @@ export async function readListasPrecio(): Promise<ListaPrecio[]> {
   }
   try {
     return readJsonFile<ListaPrecio[]>('listas_precio.json');
+  } catch {
+    return [];
+  }
+}
+
+// ============================================================
+// PRODUCTOS
+// ============================================================
+export async function readProductos(): Promise<Producto[]> {
+  if (USE_BASEROW) {
+    return cached('productos', 600, async () => {
+      type BRProducto = BRRow & {
+        codigo: string; descripcion: string; unidad: string;
+        unidades_por_caja: number | null; peso_promedio_kg: number | null;
+        categoria: string; marca: string; nombre_produccion: string; activo: boolean;
+      };
+      const rows = await br.listAll<BRProducto>(TABLES.productos);
+      return rows.map(r => ({
+        id: r.ext_id,
+        codigo: r.codigo || '',
+        descripcion: r.descripcion || '',
+        unidad: r.unidad || '',
+        unidades_por_caja: r.unidades_por_caja !== null && r.unidades_por_caja !== undefined ? Number(r.unidades_por_caja) : undefined,
+        peso_promedio_kg: r.peso_promedio_kg !== null && r.peso_promedio_kg !== undefined ? Number(r.peso_promedio_kg) : undefined,
+        categoria: r.categoria || undefined,
+        marca: r.marca || undefined,
+        nombre_produccion: r.nombre_produccion || undefined,
+        activo: r.activo !== false,
+      }));
+    });
+  }
+  try {
+    return readJsonFile<Producto[]>('productos.json');
   } catch {
     return [];
   }

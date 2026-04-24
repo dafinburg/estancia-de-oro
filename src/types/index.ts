@@ -43,8 +43,13 @@ export interface Producto {
   descripcion: string;
   unidad: string;
   unidades_por_caja?: number;
+  /** Peso promedio por unidad en kg — se usa para el cálculo auto de kg totales
+   *  en el formulario de pedido (unidades × peso_promedio_kg). */
+  peso_promedio_kg?: number;
   categoria?: string;
   marca?: string;
+  /** Nombre para planillas de producción (puede diferir del descripcion comercial). */
+  nombre_produccion?: string;
   activo: boolean;
 }
 
