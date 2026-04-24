@@ -6,8 +6,10 @@ import TabEnvasado from '@/components/produccion/TabEnvasado';
 import TabExpedicion from '@/components/produccion/TabExpedicion';
 import TabFacturacion from '@/components/produccion/TabFacturacion';
 import PlanificacionProduccion from '@/components/produccion/PlanificacionProduccion';
+import ExpedicionPorCliente from '@/components/produccion/ExpedicionPorCliente';
 
 type Tab =
+  | 'por_cliente'
   | 'planificacion'
   | 'elaboracion'
   | 'envasado'
@@ -19,10 +21,11 @@ type Tab =
   | 'facturacion_hist';
 
 const TABS: { key: Tab; label: string; grupo: 'op' | 'hist' }[] = [
+  { key: 'por_cliente', label: 'Pedidos por cliente', grupo: 'op' },
   { key: 'planificacion', label: 'Planificación', grupo: 'op' },
   { key: 'elaboracion', label: 'Elaboración', grupo: 'op' },
   { key: 'envasado', label: 'Envasado', grupo: 'op' },
-  { key: 'expedicion', label: 'Expedición', grupo: 'op' },
+  { key: 'expedicion', label: 'Planilla exped.', grupo: 'op' },
   { key: 'facturacion', label: 'Facturación', grupo: 'op' },
   { key: 'elaboracion_hist', label: 'Hist. Elab.', grupo: 'hist' },
   { key: 'envasado_hist', label: 'Hist. Envasado', grupo: 'hist' },
@@ -31,17 +34,17 @@ const TABS: { key: Tab; label: string; grupo: 'op' | 'hist' }[] = [
 ];
 
 export default function ModuloProduccion() {
-  const [tab, setTab] = useState<Tab>('planificacion');
+  const [tab, setTab] = useState<Tab>('por_cliente');
 
   return (
     <div className="max-w-full mx-auto p-4 md:p-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-verde-oscuro">Producción</h1>
-        <p className="text-gray-500 text-sm">Planilla oficial de elaboración, envasado, expedición y facturación</p>
+      <div className="no-print">
+        <h1 className="text-2xl font-bold text-verde-oscuro">Expedición</h1>
+        <p className="text-gray-500 text-sm">Pedidos agrupados por cliente y planillas oficiales de producción</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-1 border-b">
+      <div className="flex flex-wrap gap-1 border-b no-print">
         {TABS.filter(t => t.grupo === 'op').map(t => (
           <button
             key={t.key}
@@ -64,6 +67,7 @@ export default function ModuloProduccion() {
       </div>
 
       <div className="pt-2">
+        {tab === 'por_cliente' && <ExpedicionPorCliente />}
         {tab === 'planificacion' && <PlanificacionProduccion />}
         {tab === 'elaboracion' && <TabElaboracion />}
         {tab === 'envasado' && <TabEnvasado />}

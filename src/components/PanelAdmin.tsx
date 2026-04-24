@@ -1,32 +1,37 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { Pedido, EstadoPedido } from '@/types';
+import { Pedido, EstadoPedido, Vendedor } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/format';
 
 // Panel de administración: ver todos los pedidos, cambiar estado, ver alertas
 export default function PanelAdmin() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState<EstadoPedido | 'todos'>('todos');
+  const [filtroVendedor, setFiltroVendedor] = useState<string>('todos');
   const [actualizando, setActualizando] = useState<string | null>(null);
 
-  // Cargar todos los pedidos (sin filtro de vendedor)
-  const cargarPedidos = async () => {
+  // Cargar todos los pedidos + vendedores (en paralelo)
+  const cargarDatos = async () => {
     try {
-      const res = await fetch('/api/pedidos');
-      const data = await res.json();
-      setPedidos(data);
+      const [rp, rv] = await Promise.all([
+        fetch('/api/pedidos'),
+        fetch('/api/vendedores'),
+      ]);
+      setPedidos(await rp.json());
+      setVendedores(await rv.json());
     } catch {
-      console.error('Error cargando pedidos');
+      console.error('Error cargando datos');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    cargarPedidos();
+    cargarDatos();
   }, []);
 
   // Cambiar estado de un pedido
@@ -70,12 +75,21 @@ export default function PanelAdmin() {
     finalizado: null,
   };
 
-  const pedidosFiltrados = filtroEstado === 'todos'
-    ? pedidos
-    : pedidos.filter((p) => p.estado === filtroEstado);
+  const pedidosFiltrados = useMemo(() => {
+    return pedidos.filter(p => {
+      if (filtroEstado !== 'todos' && p.estado !== filtroEstado) return false;
+      if (filtroVendedor !== 'todos' && p.vendedor_id !== filtroVendedor) return false;
+      return true;
+    });
+  }, [pedidos, filtroEstado, filtroVendedor]);
 
   const pedidosOrdenados = [...pedidosFiltrados].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
+  const vendedoresOrdenados = useMemo(
+    () => [...vendedores].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+    [vendedores]
   );
 
   // Pedidos con alertas pendientes
@@ -150,20 +164,42 @@ export default function PanelAdmin() {
       )}
 
       {/* Filtros */}
-      <div className="flex flex-wrap gap-2">
-        {(['todos', 'pendiente', 'aprobado', 'enviado', 'en_produccion', 'entregado', 'finalizado'] as const).map((estado) => (
-          <button
-            key={estado}
-            onClick={() => setFiltroEstado(estado)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              filtroEstado === estado
-                ? 'bg-verde-oscuro text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-2">
+          {(['todos', 'pendiente', 'aprobado', 'enviado', 'en_produccion', 'entregado', 'finalizado'] as const).map((estado) => (
+            <button
+              key={estado}
+              onClick={() => setFiltroEstado(estado)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                filtroEstado === estado
+                  ? 'bg-verde-oscuro text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {estado === 'todos' ? 'Todos' : estadoConfig[estado].label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <label className="text-sm text-gray-600 font-medium">Vendedor:</label>
+          <select
+            value={filtroVendedor}
+            onChange={(e) => setFiltroVendedor(e.target.value)}
+            className="px-3 py-1.5 border rounded-lg text-sm bg-white text-gray-800 focus:ring-2 focus:ring-verde-oscuro outline-none"
           >
-            {estado === 'todos' ? 'Todos' : estadoConfig[estado].label}
-          </button>
-        ))}
+            <option value="todos">Todos los vendedores</option>
+            {vendedoresOrdenados
+              .filter(v => !v.rol || v.rol === undefined) // sólo vendedores, no admin/expedicion
+              .map(v => (
+                <option key={v.id} value={v.id}>{v.nombre}</option>
+              ))}
+          </select>
+          {filtroVendedor !== 'todos' && (
+            <button onClick={() => setFiltroVendedor('todos')} className="text-xs text-gray-500 hover:text-gray-700 underline">
+              limpiar
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tabla de pedidos */}

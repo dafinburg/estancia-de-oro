@@ -7,18 +7,20 @@ import { ReactNode, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
 // Shell del back-office (sistema de gestión interno)
-// Sidebar con módulos: Pedidos, Cobranzas, Producción, Clientes, Productos
-const MENU = [
-  { href: '/gestion', label: 'Dashboard', icon: '📊' },
-  { href: '/gestion/pedidos', label: 'Pedidos', icon: '📋' },
-  { href: '/gestion/cobranzas', label: 'Cobranzas', icon: '💰' },
-  { href: '/gestion/produccion', label: 'Producción', icon: '🏭' },
-  { href: '/gestion/clientes', label: 'Clientes', icon: '👥' },
-  { href: '/gestion/productos', label: 'Productos', icon: '📦' },
+// Sidebar con módulos — filtrados por rol del usuario.
+// Rol 'admin' ve todo. Rol 'expedicion' sólo ve el tab Expedición.
+type MenuItem = { href: string; label: string; icon: string; roles?: Array<'admin' | 'expedicion'> };
+const MENU: MenuItem[] = [
+  { href: '/gestion', label: 'Dashboard', icon: '📊', roles: ['admin'] },
+  { href: '/gestion/pedidos', label: 'Pedidos', icon: '📋', roles: ['admin'] },
+  { href: '/gestion/cobranzas', label: 'Cobranzas', icon: '💰', roles: ['admin'] },
+  { href: '/gestion/produccion', label: 'Expedición', icon: '🚚', roles: ['admin', 'expedicion'] },
+  { href: '/gestion/clientes', label: 'Clientes', icon: '👥', roles: ['admin'] },
+  { href: '/gestion/productos', label: 'Productos', icon: '📦', roles: ['admin'] },
 ];
 
 function Inner({ children }: { children: ReactNode }) {
-  const { vendedor, loading, isAdmin, logout } = useAuth();
+  const { vendedor, loading, canAccessGestion, isAdmin, isExpedicion, logout } = useAuth();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
@@ -31,11 +33,28 @@ function Inner({ children }: { children: ReactNode }) {
     );
   }
   if (!vendedor) return <LoginForm />;
-  if (!isAdmin) {
-    // Un vendedor por error cayó en /gestion → mandarlo al app vendedor
+  if (!canAccessGestion) {
+    // Un vendedor sin permisos cayó en /gestion → mandarlo al app vendedor
     if (typeof window !== 'undefined') router.replace('/vendedor');
     return null;
   }
+  // Expedición entrando a una ruta que no puede ver → redirigir a su home
+  if (isExpedicion && !isAdmin) {
+    const allowed = MENU.filter(m => m.roles?.includes('expedicion')).map(m => m.href);
+    const actual = pathname || '';
+    const ok = allowed.some(h => actual === h || actual.startsWith(h + '/'));
+    if (!ok && typeof window !== 'undefined') {
+      router.replace('/gestion/produccion');
+      return null;
+    }
+  }
+
+  const menuVisible = MENU.filter(m => {
+    if (!m.roles || m.roles.length === 0) return true;
+    if (isAdmin) return true;
+    if (isExpedicion) return m.roles.includes('expedicion');
+    return false;
+  });
 
   return (
     <div className="flex min-h-screen bg-[var(--gris-fondo)]">
@@ -53,7 +72,7 @@ function Inner({ children }: { children: ReactNode }) {
           </div>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {MENU.map((item) => {
+          {menuVisible.map((item) => {
             const active = pathname === item.href || (item.href !== '/gestion' && pathname?.startsWith(item.href));
             return (
               <Link key={item.href} href={item.href}
@@ -99,7 +118,7 @@ function Inner({ children }: { children: ReactNode }) {
               </button>
             </div>
             <nav className="flex-1 px-3 py-4 space-y-1">
-              {MENU.map((item) => {
+              {menuVisible.map((item) => {
                 const active = pathname === item.href || (item.href !== '/gestion' && pathname?.startsWith(item.href));
                 return (
                   <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}

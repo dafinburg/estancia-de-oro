@@ -8,7 +8,12 @@ export interface Vendedor {
   region: string;
   clientes: string[];
   lista_precio_id: string;
-  rol?: 'admin';
+  /** Rol del usuario:
+   *    undefined → vendedor (default)
+   *    'admin'   → acceso completo al back-office
+   *    'expedicion' → sólo ve el m\u00f3dulo de Expedici\u00f3n
+   */
+  rol?: 'admin' | 'expedicion';
 }
 
 export interface Cliente {
