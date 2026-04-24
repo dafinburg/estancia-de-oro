@@ -61,8 +61,11 @@ export async function readPedidos(): Promise<Pedido[]> {
   if (IS_VERCEL) {
     return cached('pedidos', 20, async () => {
       const data = await fetchFromSheet<unknown[]>('list');
-      if (Array.isArray(data)) return (data as Record<string, unknown>[]).map(normalizeFromSheet);
-      return globalAny.__pedidos_cache || [];
+      if (!Array.isArray(data)) return globalAny.__pedidos_cache || [];
+      const pedidos = (data as Record<string, unknown>[]).map(normalizeFromSheet);
+      // Backfill vendedor_id cuando el Sheet solo guarda "Vendedor" (nombre).
+      // Sin esto, el filtro por vendedor devuelve vacío (bug sjara).
+      return await backfillVendedorId(pedidos);
     });
   }
   try {
@@ -70,6 +73,21 @@ export async function readPedidos(): Promise<Pedido[]> {
   } catch {
     return [];
   }
+}
+
+// Si algún pedido quedó sin vendedor_id (el Sheet no lo tiene), lo resolvemos
+// por nombre desde el maestro de vendedores.
+async function backfillVendedorId(pedidos: Pedido[]): Promise<Pedido[]> {
+  const faltantes = pedidos.some(p => !p.vendedor_id && p.vendedor_nombre);
+  if (!faltantes) return pedidos;
+  const vendedores = await readVendedores();
+  const byNombre = new Map<string, string>();
+  vendedores.forEach(v => byNombre.set(v.nombre.trim().toLowerCase(), v.id));
+  return pedidos.map(p => {
+    if (p.vendedor_id || !p.vendedor_nombre) return p;
+    const id = byNombre.get(p.vendedor_nombre.trim().toLowerCase());
+    return id ? { ...p, vendedor_id: id } : p;
+  });
 }
 
 export async function savePedido(pedido: Pedido): Promise<void> {
