@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "baserow:setup": "node scripts/baserow/setup.mjs"
   },
   "dependencies": {
     "next": "16.2.3",
