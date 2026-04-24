@@ -404,7 +404,9 @@ export async function updatePedidoCompleto(id: string, cambios: Partial<Pedido>)
 // ============================================================
 export async function readClientes(): Promise<Cliente[]> {
   if (USE_BASEROW) {
-    return cached('clientes', 60, async () => {
+    // TTL alto: el maestro de clientes cambia raro (upload de Excel). Al
+    // invalidarse por escritura seguimos frescos.
+    return cached('clientes', 600, async () => {
       const rows = await br.listAll<BRCliente>(TABLES.clientes, { size: 200 });
       return rows.map(clienteFromBR);
     });
@@ -434,9 +436,12 @@ export async function readClientes(): Promise<Cliente[]> {
 // ============================================================
 export async function readVendedores(): Promise<Vendedor[]> {
   if (USE_BASEROW) {
-    return cached('vendedores', 60, async () => {
-      const rows = await br.listAll<BRVendedor>(TABLES.vendedores);
-      const clientes = await readClientes();
+    return cached('vendedores', 600, async () => {
+      // Paralelizar: vendedores y clientes son independientes
+      const [rows, clientes] = await Promise.all([
+        br.listAll<BRVendedor>(TABLES.vendedores),
+        readClientes(),
+      ]);
       return rows.filter(r => r.activo !== false).map(r => vendedorFromBR(r, clientes));
     });
   }

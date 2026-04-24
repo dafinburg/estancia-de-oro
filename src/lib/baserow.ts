@@ -59,34 +59,54 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 // ---------- Lecturas ----------
 
 /**
- * Lista filas paginadas. Trae TODAS las páginas (para maestros chicos como
- * productos, vendedores, etc.). Para tablas grandes (clientes, pedidos) usar
- * filtros server-side o paginación explícita.
+ * Lista TODAS las filas de una tabla, paginando en PARALELO.
+ *
+ * Estrategia: primera request secuencial para leer `count`, después se
+ * disparan en paralelo todas las páginas restantes. Para 2500 clientes con
+ * size=200 esto baja de 13 requests secuenciales a 1 + Promise.all(12) —
+ * en la práctica ~1s en vez de ~8s.
+ *
+ * Si se pasa `fields`, solo trae esas columnas (reduce payload) —
+ * útil para maestros grandes donde sólo necesitás 2-3 columnas.
  */
 export async function listAll<T>(tableId: number, opts: {
   filters?: BaserowFilter[];
   orderBy?: string;
   size?: number;
+  fields?: string[];
 } = {}): Promise<T[]> {
   const size = opts.size ?? 200;
-  const all: T[] = [];
-  let page = 1;
-  for (;;) {
+
+  const buildQs = (page: number): string => {
     const qs = new URLSearchParams({
       user_field_names: 'true',
       size: String(size),
       page: String(page),
     });
     if (opts.orderBy) qs.set('order_by', opts.orderBy);
+    if (opts.fields && opts.fields.length > 0) {
+      qs.set('include', opts.fields.join(','));
+    }
     for (const f of opts.filters || []) {
       if (f.value !== undefined) qs.set(`filter__${f.field}__${f.type}`, String(f.value));
       else qs.set(`filter__${f.field}__${f.type}`, '');
     }
-    const data = await request<BaserowPage<T>>('GET', `/api/database/rows/table/${tableId}/?${qs}`);
-    all.push(...data.results);
-    if (!data.next) break;
-    page++;
-  }
+    return qs.toString();
+  };
+
+  // Primera request: nos dice el count total
+  const first = await request<BaserowPage<T>>('GET', `/api/database/rows/table/${tableId}/?${buildQs(1)}`);
+  if (!first.next) return first.results;
+
+  const totalPages = Math.ceil(first.count / size);
+  // Disparar páginas 2..N en paralelo
+  const rest = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, i) =>
+      request<BaserowPage<T>>('GET', `/api/database/rows/table/${tableId}/?${buildQs(i + 2)}`)
+    )
+  );
+  const all: T[] = [...first.results];
+  for (const r of rest) all.push(...r.results);
   return all;
 }
 
