@@ -19,8 +19,8 @@
  * NO usamos como FK.
  */
 
-const number = (opts = {}) => ({ type: 'number', number_decimal_places: 0, ...opts });
-const decimal = (places = 2) => ({ type: 'number', number_decimal_places: places });
+const number = (opts = {}) => ({ type: 'number', number_decimal_places: 0, number_negative: true, ...opts });
+const decimal = (places = 2) => ({ type: 'number', number_decimal_places: places, number_negative: true });
 const text = () => ({ type: 'text' });
 const longText = () => ({ type: 'long_text' });
 const bool = () => ({ type: 'boolean' });
@@ -37,7 +37,7 @@ export const SCHEMA = [
   {
     name: 'vendedores',
     fields: [
-      { name: 'id', ...text() },
+      { name: 'ext_id', ...text() },
       { name: 'nombre', ...text() },
       { name: 'usuario', ...text() },
       { name: 'password', ...text() },
@@ -50,7 +50,7 @@ export const SCHEMA = [
   {
     name: 'clientes',
     fields: [
-      { name: 'id', ...text() },
+      { name: 'ext_id', ...text() },
       { name: 'numero', ...number() },
       { name: 'razon_social', ...text() },
       { name: 'nombre_fantasia', ...text() },
@@ -72,7 +72,7 @@ export const SCHEMA = [
   {
     name: 'productos',
     fields: [
-      { name: 'id', ...text() },
+      { name: 'ext_id', ...text() },
       { name: 'codigo', ...text() },
       { name: 'descripcion', ...text() },
       { name: 'unidad', ...text() },
@@ -87,14 +87,14 @@ export const SCHEMA = [
   {
     name: 'listas_precio',
     fields: [
-      { name: 'id', ...text() },
+      { name: 'ext_id', ...text() },
       { name: 'nombre', ...text() },
     ],
   },
   {
     name: 'precios',
     fields: [
-      { name: 'id', ...text() }, // compuesto: "{lista}_{producto}"
+      { name: 'ext_id', ...text() }, // compuesto: "{lista}_{producto}"
       { name: 'lista_id', ...text() },
       { name: 'producto_id', ...text() },
       { name: 'codigo', ...text() }, // denormalizado para búsqueda
@@ -114,7 +114,7 @@ export const SCHEMA = [
   {
     name: 'pedidos',
     fields: [
-      { name: 'id', ...text() },
+      { name: 'ext_id', ...text() },
       { name: 'numero', ...text() },
       { name: 'vendedor_id', ...text() },
       { name: 'vendedor_nombre', ...text() },
@@ -144,7 +144,7 @@ export const SCHEMA = [
 
 function planillasProduccion() {
   const elaboracion = [
-    { name: 'id', ...text() }, { name: 'fecha', ...date() }, { name: 'tina', ...number() },
+    { name: 'ext_id', ...text() }, { name: 'fecha', ...date() }, { name: 'tina', ...number() },
     { name: 'masa', ...text() }, { name: 'productos_hijos_json', ...longText() },
     { name: 'leche_litros', ...decimal(2) }, { name: 'acidez', ...decimal(2) }, { name: 'grasa', ...decimal(2) },
     { name: 'temp_inicio', ...decimal(1) }, { name: 'hora_inicio', ...text() },
@@ -162,21 +162,21 @@ function planillasProduccion() {
     { name: 'estado', ...select(['en_curso', 'cerrada']) }, { name: 'created_at', ...datetime() },
   ];
   const envasado = [
-    { name: 'id', ...text() }, { name: 'fecha', ...date() }, { name: 'producto', ...text() },
+    { name: 'ext_id', ...text() }, { name: 'fecha', ...date() }, { name: 'producto', ...text() },
     { name: 'lote', ...text() }, { name: 'cantidad_unidades', ...number() }, { name: 'peso_total_kg', ...decimal(2) },
     { name: 'peso_promedio_kg', ...decimal(3) }, { name: 'tipo_envase', ...text() },
     { name: 'operario', ...text() }, { name: 'observaciones', ...longText() },
     { name: 'estado', ...select(['en_curso', 'cerrada']) }, { name: 'created_at', ...datetime() },
   ];
   const expedicion = [
-    { name: 'id', ...text() }, { name: 'fecha', ...date() }, { name: 'pedido_id', ...text() },
+    { name: 'ext_id', ...text() }, { name: 'fecha', ...date() }, { name: 'pedido_id', ...text() },
     { name: 'pedido_numero', ...text() }, { name: 'cliente', ...text() }, { name: 'producto', ...text() },
     { name: 'cantidad_unidades', ...number() }, { name: 'cantidad_cajas', ...number() }, { name: 'peso_kg', ...decimal(2) },
     { name: 'transportista', ...text() }, { name: 'operario', ...text() }, { name: 'observaciones', ...longText() },
     { name: 'estado', ...select(['en_curso', 'cerrada']) }, { name: 'created_at', ...datetime() },
   ];
   const facturacion = [
-    { name: 'id', ...text() }, { name: 'fecha', ...date() }, { name: 'pedido_id', ...text() },
+    { name: 'ext_id', ...text() }, { name: 'fecha', ...date() }, { name: 'pedido_id', ...text() },
     { name: 'cliente', ...text() }, { name: 'tipo_comprobante', ...text() }, { name: 'numero_comprobante', ...text() },
     { name: 'total', ...decimal(2) }, { name: 'observaciones', ...longText() },
     { name: 'estado', ...select(['en_curso', 'cerrada']) }, { name: 'created_at', ...datetime() },

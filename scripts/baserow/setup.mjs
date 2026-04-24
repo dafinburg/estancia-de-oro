@@ -152,7 +152,7 @@ function readJson(rel) {
 
 function importClientes() {
   return readJson('clientes.json').map(c => ({
-    id: c.id || '',
+    ext_id: c.id || '',
     numero: c.numero ?? null,
     razon_social: c.razon_social || '',
     nombre_fantasia: c.nombre_fantasia || '',
@@ -168,13 +168,13 @@ function importClientes() {
     lista_precio_id: c.lista_precio_id || 'lp_general',
     zona: c.zona || '',
     recorrido: c.recorrido || '',
-    estado_cuenta: c.estado_cuenta || '',
+    estado_cuenta: c.estado_cuenta || null,
   }));
 }
 
 function importVendedores() {
   return readJson('vendedores.json').map(v => ({
-    id: v.id,
+    ext_id: v.id,
     nombre: v.nombre,
     usuario: v.usuario,
     password: v.password,
@@ -187,7 +187,7 @@ function importVendedores() {
 
 function importProductos() {
   return readJson('productos.json').map(p => ({
-    id: p.id,
+    ext_id: p.id,
     codigo: p.codigo,
     descripcion: p.descripcion,
     unidad: p.unidad || '',
@@ -202,7 +202,7 @@ function importProductos() {
 
 function importListasPrecio() {
   const listas = readJson('listas_precio.json');
-  return listas.map(l => ({ id: l.id, nombre: l.nombre }));
+  return listas.map(l => ({ ext_id: l.id, nombre: l.nombre }));
 }
 
 function importPrecios() {
@@ -210,7 +210,7 @@ function importPrecios() {
   for (const l of readJson('listas_precio.json')) {
     for (const p of (l.precios || [])) {
       out.push({
-        id: `${l.id}_${p.producto_id}`,
+        ext_id: `${l.id}_${p.producto_id}`,
         lista_id: l.id,
         producto_id: p.producto_id,
         codigo: p.codigo || '',
