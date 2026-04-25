@@ -53,4 +53,13 @@ body {
     border: 1px solid #333;
     padding: 4px 8px;
   }
+  /* Cada pedido completo en su propia "tarjeta", sin partir en la mitad */
+  .print-pedido {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 16px;
+  }
+  .print-only { display: block !important; }
+  .screen-only { display: none !important; }
 }
+.print-only { display: none; }

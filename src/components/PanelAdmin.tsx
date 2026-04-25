@@ -230,7 +230,7 @@ export default function PanelAdmin() {
           <p className="text-gray-500">No hay pedidos</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border overflow-hidden screen-only">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -286,6 +286,72 @@ export default function PanelAdmin() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Vista detallada solo para impresión: cada pedido con sus líneas */}
+      {pedidosOrdenados.length > 0 && (
+        <div className="print-only space-y-4">
+          {pedidosOrdenados.map((pedido) => (
+            <div key={`print-${pedido.id}`} className="print-pedido border border-gray-700 p-3">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <p className="font-bold text-base">{pedido.numero} — {pedido.cliente_razon_social}</p>
+                  <p className="text-xs text-gray-700">
+                    Vendedor: {pedido.vendedor_nombre}
+                    {' · '}Entrega: {formatDate(pedido.fecha_entrega) || '—'}
+                    {' · '}Estado: {(estadoConfig[pedido.estado] || estadoConfig.pendiente).label}
+                  </p>
+                  {pedido.direccion_entrega && (
+                    <p className="text-xs text-gray-700">Dir.: {pedido.direccion_entrega}</p>
+                  )}
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-700">Cond. pago</p>
+                  <p className="text-xs">{pedido.condicion_pago}</p>
+                </div>
+              </div>
+
+              {pedido.lineas && pedido.lineas.length > 0 ? (
+                <table className="w-full text-xs mt-2">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="text-left">Código</th>
+                      <th className="text-left">Producto</th>
+                      <th className="text-right">Unidades</th>
+                      <th className="text-right">Cajas</th>
+                      <th className="text-right">Kg aprox.</th>
+                      <th className="text-right">Precio</th>
+                      <th className="text-right">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pedido.lineas.map((l, i) => (
+                      <tr key={i}>
+                        <td>{l.codigo}</td>
+                        <td>{l.descripcion}</td>
+                        <td className="text-right">{l.cantidad}</td>
+                        <td className="text-right">{l.cajas}</td>
+                        <td className="text-right">{l.kg_aprox || '—'}</td>
+                        <td className="text-right">{formatCurrency(l.precio_unitario)}</td>
+                        <td className="text-right">{formatCurrency(l.subtotal)}</td>
+                      </tr>
+                    ))}
+                    <tr>
+                      <td colSpan={6} className="text-right font-bold">Total</td>
+                      <td className="text-right font-bold">{formatCurrency(pedido.total)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              ) : (
+                <p className="text-xs italic text-gray-500">Sin líneas</p>
+              )}
+
+              {pedido.notas && (
+                <p className="text-xs mt-2"><strong>Notas:</strong> {pedido.notas}</p>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>
