@@ -9,16 +9,17 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
+    const headers = { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600' };
     if (id) {
       const lista = await readListaPrecio(id);
       if (!lista) {
         return NextResponse.json({ error: 'Lista no encontrada' }, { status: 404 });
       }
-      return NextResponse.json(lista);
+      return NextResponse.json(lista, { headers });
     }
 
     const listas = await readListasPrecio();
-    return NextResponse.json(listas);
+    return NextResponse.json(listas, { headers });
   } catch (err) {
     console.error('Error en /api/listas-precio:', err);
     return NextResponse.json({ error: 'Error al leer listas de precio' }, { status: 500 });

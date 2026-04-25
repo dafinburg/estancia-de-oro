@@ -241,13 +241,13 @@ function vendedorFromBR(r: BRVendedor, clientes: Cliente[]): Vendedor {
 // ============================================================
 export async function readPedidos(): Promise<Pedido[]> {
   if (USE_BASEROW) {
-    return cached('pedidos', 20, async () => {
+    return cached('pedidos', 60, async () => {
       const rows = await br.listAll<BRPedido>(TABLES.pedidos, { orderBy: '-created_at' });
       return rows.map(pedidoFromBR);
     });
   }
   if (IS_VERCEL) {
-    return cached('pedidos', 20, async () => {
+    return cached('pedidos', 60, async () => {
       const data = await fetchFromSheet<unknown[]>('list');
       if (!Array.isArray(data)) return globalAny.__pedidos_cache || [];
       const pedidos = (data as Record<string, unknown>[]).map(normalizeFromSheet);

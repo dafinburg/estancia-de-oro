@@ -9,14 +9,12 @@ export async function GET(request: Request) {
     const idsParam = searchParams.get('ids');
 
     const todos = await readClientes();
-
-    if (idsParam) {
-      const ids = idsParam.split(',').filter(Boolean);
-      const filtrados = todos.filter((c) => ids.includes(c.id));
-      return NextResponse.json(filtrados);
-    }
-
-    return NextResponse.json(todos);
+    const data = idsParam
+      ? todos.filter((c) => idsParam.split(',').filter(Boolean).includes(c.id))
+      : todos;
+    return NextResponse.json(data, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=600' },
+    });
   } catch (err) {
     console.error('Error en /api/clientes:', err);
     return NextResponse.json({ error: 'Error al leer clientes' }, { status: 500 });

@@ -5,7 +5,9 @@ import { readProductos } from '@/lib/data';
 export async function GET() {
   try {
     const productos = await readProductos();
-    return NextResponse.json(productos.filter((p) => p.activo));
+    return NextResponse.json(productos.filter((p) => p.activo), {
+      headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600' },
+    });
   } catch {
     return NextResponse.json({ error: 'Error al leer productos' }, { status: 500 });
   }
