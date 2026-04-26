@@ -2,6 +2,42 @@
 
 Contexto para Claude Code cuando trabaje en este proyecto. Actualizar cuando la arquitectura cambie.
 
+## Estado actual (abril 2026) — RESUMEN VIGENTE
+
+**Producción**: https://estancia-de-oro.vercel.app · branch `master` · deploy automático en Vercel.
+
+**Fuente de datos**: **Baserow self-hosted** (workspace 140, database 213). Token: ver global CLAUDE.md (`dVqMuLbdvmWQ1T9ligh367xlY4DBArLd`). Tablas: 806–820 mapeadas en `src/lib/baserow.config.ts`.
+
+Env vars en Vercel production:
+- `DATA_SOURCE=baserow` (activa el modo Baserow en `src/lib/data.ts`)
+- `BASEROW_URL=https://baserow.mtrpymes.com.ar`
+- `BASEROW_TOKEN=...`
+- `GOOGLE_SHEETS_WEBHOOK_URL` (queda como fallback histórico, ya no se usa)
+
+**Roles de usuario** (`Vendedor.rol`):
+- `undefined` → vendedor común (ve `/vendedor/*`, sólo sus clientes)
+- `'admin'` → back-office completo en `/gestion/*`
+- `'expedicion'` → sólo `/gestion/produccion` (renombrado a "Expedición" 🚚 en UI)
+- Login admin: `admin` / `admin2024`
+
+**Lo que se hizo en esta tanda de cambios**:
+1. **Migración a Baserow** — `data.ts` y `produccion.ts` leen/escriben en Baserow vía `src/lib/baserow.ts` (Database Token). `replaceAllRows` para upload masivo. Paginación paralela + cache en memoria con TTLs altos (clientes/productos/vendedores 600s, listas_precio 300s, pedidos 20s) + edge cache HTTP (`s-maxage` en API routes).
+2. **Form de pedido reescrito** — combobox de cliente, sin fecha de entrega ni transporte (lo carga el admin después), unidades como input primario (cajas y kg derivados de `unidades_por_caja` y `peso_promedio_kg`), "precio especial" en lugar de % descuento (alerta automática si difiere del precio de lista), un solo botón Confirmar con validación inline.
+3. **Panel admin** — filtro por vendedor además de estado, botón "🖨 Imprimir lista" que imprime cada pedido como tarjeta con detalle de líneas (código, producto, unidades, cajas, kg, precio, subtotal, total), `page-break-inside: avoid`.
+4. **Módulo Expedición** — nueva tab por defecto **"Pedidos por cliente"** (`ExpedicionPorCliente.tsx`) que agrupa pedidos por cliente y suma productos. Las planillas de elaboración/envasado/expedición/facturación quedaron como tabs secundarias.
+5. **Upload masivo** — `/gestion/admin` con formulario para subir Excel/CSV de clientes, productos o lista de precios. Reemplazo total (clientes/productos) o parcial por lista (precios). Parser tolerante con tildes/mayúsculas/espacios. Usa lib `xlsx` (SheetJS).
+
+**Convención Baserow**: el campo `id` está reservado por Baserow (es el row_id numérico interno). El id textual del dominio vive en `ext_id`. Los adaptadores en `data.ts` (`pedidoFromBR`, `clienteFromBR`, etc.) hacen el mapeo `ext_id → id` para que el resto de la app no note la diferencia. Single_select de Baserow llega como `{ value }` o string o null → usar helper `pickSelect()`. Los campos numéricos requieren `number_negative: true` al crearlos si pueden ser negativos.
+
+**Pedidos viejos del Sheet NO se migraron** — decisión del usuario, se empieza desde cero con Baserow. El historial pre-cutover queda en el Sheet original como archivo.
+
+**Pendientes que quedaron sugeridos**:
+- Limpieza del código de fallback a Sheets en `data.ts` y `produccion.ts` (ahora que Baserow es autoritativo).
+- Cache headers en `/api/produccion/*`.
+- Vista "mis pedidos" del vendedor — verificar performance.
+- Backup/export espejo del upload masivo.
+- Revisar módulo Cobranzas.
+
 ## Qué es este proyecto
 
 Sistema web para **Estancia de Oro S.A.** (productora de quesos y lácteos en Argentina). Reemplaza el formulario manual por WhatsApp que usaban los vendedores para tomar pedidos, y suma un back-office interno para administración.
