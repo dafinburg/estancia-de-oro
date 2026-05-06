@@ -77,13 +77,18 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
     const cajas = l.cantidad > 0 ? +(l.cantidad / upc).toFixed(2) : 0;
     const pesoProm = producto?.peso_promedio_kg ?? 0;
     const kg = pesoProm > 0 ? +(l.cantidad * pesoProm).toFixed(2) : l.kg_aprox;
+    // Subtotal: si hay kg (sea derivado del peso o cargado a mano), el precio
+    // se interpreta como $/kg. Si no hay kg, fallback a precio por unidad.
+    const subtotal = kg > 0
+      ? +(kg * l.precio_unitario).toFixed(2)
+      : +(l.cantidad * l.precio_unitario).toFixed(2);
     return {
       ...l,
       cajas,
       kg_aprox: kg,
       precio_bonificado: l.precio_unitario, // sin descuento
       descuento_porcentaje: 0,
-      subtotal: +(l.cantidad * l.precio_unitario).toFixed(2),
+      subtotal,
     };
   }
 
