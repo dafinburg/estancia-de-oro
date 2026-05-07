@@ -31,6 +31,30 @@ Env vars en Vercel production:
 
 **Pedidos viejos del Sheet NO se migraron** — decisión del usuario, se empieza desde cero con Baserow. El historial pre-cutover queda en el Sheet original como archivo.
 
+**Cálculo de subtotal en líneas de pedido** (`recalcular()` en `FormularioPedido.tsx`):
+- Si el producto tiene `peso_promedio_kg > 0` (o el vendedor ingresó kg manualmente): `subtotal = kg × precio_unitario` (precio interpretado como $/kg).
+- Si no hay kg: fallback a `subtotal = unidades × precio_unitario` (productos que se venden por unidad: manteca, DDL, aderezos, crema, recortes).
+
+**Pesos promedio cargados en Baserow (mayo 2026)** — tabla productos (808):
+| Código | Producto | Kg |
+|---|---|---|
+| 301 | Gruyere Horma | 40 |
+| 302 | Gruyere Cuña | 3,5 |
+| 310, 311 | Cremoso (Don Rogelio + EO) | 4 |
+| 312 | Port Salut | 3,5 |
+| 321 | Tybo | 4 |
+| 340 | Gouda | 5 |
+| 341 | Pategras | 5 |
+| 351 | Fontina | 5 |
+| 361 | Mozzarella | 4 |
+| 400 | Criollo | 5 |
+| 402 | Sardo | 3,5 |
+| 411 | Provoleta | 4 |
+| 421 | Reggianito | 5 |
+| 431 | Roquefort | 2,5 |
+
+Los 10 productos no-queso (manteca 100/200g, DDL, aderezos 40/120g, crema, recortes) quedan sin peso a propósito → calculan por unidad.
+
 **Pendientes que quedaron sugeridos**:
 - Limpieza del código de fallback a Sheets en `data.ts` y `produccion.ts` (ahora que Baserow es autoritativo).
 - Cache headers en `/api/produccion/*`.
