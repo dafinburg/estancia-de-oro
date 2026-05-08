@@ -44,6 +44,9 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     headers: {
       'Authorization': `Token ${TOKEN}`,
       'Content-Type': 'application/json',
+      // Pedimos compresion al server. Node fetch decomprime auto.
+      // Sobre 600KB de JSON de clientes esto baja a ~80KB de transferencia.
+      'Accept-Encoding': 'gzip, br',
     },
     body: body ? JSON.stringify(body) : undefined,
     cache: 'no-store',

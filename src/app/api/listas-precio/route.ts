@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
-    const headers = { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600' };
+    const headers = { 'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=3600' };
     if (id) {
       const lista = await readListaPrecio(id);
       if (!lista) {

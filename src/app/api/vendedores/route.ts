@@ -11,7 +11,7 @@ export async function GET() {
       return rest;
     });
     return NextResponse.json(publicList, {
-      headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600' },
+      headers: { 'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=3600' },
     });
   } catch (err) {
     console.error('Error en /api/vendedores:', err);

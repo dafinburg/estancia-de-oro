@@ -407,7 +407,7 @@ export async function readClientes(): Promise<Cliente[]> {
   if (USE_BASEROW) {
     // TTL alto: el maestro de clientes cambia raro (upload de Excel). Al
     // invalidarse por escritura seguimos frescos.
-    return cached('clientes', 600, async () => {
+    return cached('clientes', 1800, async () => {
       const rows = await br.listAll<BRCliente>(TABLES.clientes, { size: 200 });
       return rows.map(clienteFromBR);
     });
@@ -437,7 +437,7 @@ export async function readClientes(): Promise<Cliente[]> {
 // ============================================================
 export async function readVendedores(): Promise<Vendedor[]> {
   if (USE_BASEROW) {
-    return cached('vendedores', 600, async () => {
+    return cached('vendedores', 1800, async () => {
       // Paralelizar: vendedores y clientes son independientes
       const [rows, clientes] = await Promise.all([
         br.listAll<BRVendedor>(TABLES.vendedores),
@@ -509,7 +509,7 @@ export async function readListasPrecio(): Promise<ListaPrecio[]> {
 // ============================================================
 export async function readProductos(): Promise<Producto[]> {
   if (USE_BASEROW) {
-    return cached('productos', 600, async () => {
+    return cached('productos', 1800, async () => {
       type BRProducto = BRRow & {
         codigo: string; descripcion: string; unidad: string;
         unidades_por_caja: number | null; peso_promedio_kg: number | null;

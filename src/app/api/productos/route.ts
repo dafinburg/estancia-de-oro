@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     }
     const productos = await readProductos();
     return NextResponse.json(productos.filter((p) => p.activo), {
-      headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600' },
+      headers: { 'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=3600' },
     });
   } catch (e) {
     return NextResponse.json({ error: 'Error al leer productos', detail: e instanceof Error ? e.message : String(e) }, { status: 500 });

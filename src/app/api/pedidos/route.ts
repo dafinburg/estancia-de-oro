@@ -10,9 +10,9 @@ export async function GET(request: Request) {
     const vendedorId = searchParams.get('vendedor_id');
     const pedidos = await readPedidos();
 
-    // Edge cache corto: pedidos cambian seguido, pero 15s de cache amortiza
-    // cuando varios usuarios refrescan a la vez.
-    const headers = { 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=120' };
+    // Pedidos cambia mas seguido que los maestros. SWR alto para que
+    // recargas posteriores al TTL sirvan stale al instante mientras revalida.
+    const headers = { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=300' };
     if (vendedorId) {
       return NextResponse.json(pedidos.filter((p) => p.vendedor_id === vendedorId), { headers });
     }

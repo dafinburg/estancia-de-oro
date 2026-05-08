@@ -3,17 +3,31 @@ import { readClientes, updateClienteEstado } from '@/lib/data';
 import { EstadoCuenta } from '@/types';
 
 // GET /api/clientes?ids=c001,c003 — Clientes (filtrable por IDs)
+// GET /api/clientes?lite=1 — version reducida (id, razon_social, vendedor_id,
+//   saldo_cuenta_corriente, estado_cuenta) — ~70% mas chico, ideal para listas
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const idsParam = searchParams.get('ids');
+    const lite = searchParams.get('lite') === '1';
 
     const todos = await readClientes();
-    const data = idsParam
+    let data = idsParam
       ? todos.filter((c) => idsParam.split(',').filter(Boolean).includes(c.id))
       : todos;
+    if (lite) {
+      data = data.map((c) => ({
+        id: c.id,
+        razon_social: c.razon_social,
+        vendedor_id: c.vendedor_id,
+        saldo_cuenta_corriente: c.saldo_cuenta_corriente,
+        estado_cuenta: c.estado_cuenta,
+        lista_precio_id: c.lista_precio_id,
+      })) as typeof data;
+    }
     return NextResponse.json(data, {
-      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=600' },
+      // Clientes cambia raro (upload manual desde admin). Cache largo + SWR.
+      headers: { 'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=3600' },
     });
   } catch (err) {
     console.error('Error en /api/clientes:', err);
