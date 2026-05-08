@@ -515,6 +515,11 @@ export async function readProductos(): Promise<Producto[]> {
         categoria: string; marca: string; nombre_produccion: string; activo: boolean;
       };
       const rows = await br.listAll<BRProducto>(TABLES.productos);
+      // DEBUG temporal
+      if (rows[0]) {
+        console.log('[DEBUG productos] keys:', Object.keys(rows[0]));
+        console.log('[DEBUG productos] peso_promedio_kg=', rows[0].peso_promedio_kg, 'typeof=', typeof rows[0].peso_promedio_kg);
+      }
       return rows.map(r => ({
         id: r.ext_id,
         codigo: r.codigo || '',
