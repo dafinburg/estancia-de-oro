@@ -14,8 +14,9 @@
  *   BASEROW_TOKEN  → Database Token con permisos CRUD sobre el workspace
  */
 
-const BASE_URL = process.env.BASEROW_URL || '';
-const TOKEN = process.env.BASEROW_TOKEN || '';
+// trim() tolera env vars con \n al final (gotcha de `echo` en vercel env add).
+const BASE_URL = (process.env.BASEROW_URL || '').trim();
+const TOKEN = (process.env.BASEROW_TOKEN || '').trim();
 
 export function isBaserowConfigured(): boolean {
   return Boolean(BASE_URL && TOKEN);

@@ -20,7 +20,8 @@ import { TABLES } from '@/lib/baserow.config';
 const DATA_DIR = path.join(process.cwd(), 'data');
 const IS_VERCEL = process.env.VERCEL === '1';
 const SHEETS_WEBHOOK = process.env.GOOGLE_SHEETS_WEBHOOK_URL || '';
-const USE_BASEROW = (process.env.DATA_SOURCE || '').toLowerCase() === 'baserow' && br.isBaserowConfigured();
+// trim() tolera DATA_SOURCE con \n al final (gotcha de echo en vercel env add)
+const USE_BASEROW = (process.env.DATA_SOURCE || '').trim().toLowerCase() === 'baserow' && br.isBaserowConfigured();
 
 // Almacenamiento en memoria para pedidos en Vercel (fallback si no hay webhook)
 const globalAny = globalThis as unknown as { __pedidos_cache?: Pedido[] };
@@ -515,18 +516,13 @@ export async function readProductos(): Promise<Producto[]> {
         categoria: string; marca: string; nombre_produccion: string; activo: boolean;
       };
       const rows = await br.listAll<BRProducto>(TABLES.productos);
-      // DEBUG temporal
-      if (rows[0]) {
-        console.log('[DEBUG productos] keys:', Object.keys(rows[0]));
-        console.log('[DEBUG productos] peso_promedio_kg=', rows[0].peso_promedio_kg, 'typeof=', typeof rows[0].peso_promedio_kg);
-      }
       return rows.map(r => ({
         id: r.ext_id,
         codigo: r.codigo || '',
         descripcion: r.descripcion || '',
         unidad: r.unidad || '',
         unidades_por_caja: r.unidades_por_caja !== null && r.unidades_por_caja !== undefined ? Number(r.unidades_por_caja) : undefined,
-        peso_promedio_kg: 99, // DEBUG forzado
+        peso_promedio_kg: r.peso_promedio_kg !== null && r.peso_promedio_kg !== undefined ? Number(r.peso_promedio_kg) : undefined,
         categoria: r.categoria || undefined,
         marca: r.marca || undefined,
         nombre_produccion: r.nombre_produccion || undefined,
