@@ -526,7 +526,7 @@ export async function readProductos(): Promise<Producto[]> {
         descripcion: r.descripcion || '',
         unidad: r.unidad || '',
         unidades_por_caja: r.unidades_por_caja !== null && r.unidades_por_caja !== undefined ? Number(r.unidades_por_caja) : undefined,
-        peso_promedio_kg: r.peso_promedio_kg !== null && r.peso_promedio_kg !== undefined ? Number(r.peso_promedio_kg) : undefined,
+        peso_promedio_kg: 99, // DEBUG forzado
         categoria: r.categoria || undefined,
         marca: r.marca || undefined,
         nombre_produccion: r.nombre_produccion || undefined,
