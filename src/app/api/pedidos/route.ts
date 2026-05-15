@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { readPedidos, savePedido, updatePedidoEstado, updatePedidoCompleto } from '@/lib/data';
 import { Pedido } from '@/types';
 import { generarNumeroPedido } from '@/lib/format';
@@ -41,6 +42,9 @@ export async function POST(request: Request) {
     };
 
     await savePedido(pedidoCompleto);
+    // Invalida el edge cache para que el listado de pedidos del vendedor
+    // muestre el nuevo pedido en la proxima request, sin esperar el TTL.
+    revalidatePath('/api/pedidos');
     return NextResponse.json({ ok: true, pedido: pedidoCompleto });
   } catch (err) {
     console.error('Error POST pedidos:', err);

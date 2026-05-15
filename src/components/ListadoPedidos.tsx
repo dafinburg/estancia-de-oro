@@ -18,7 +18,10 @@ export default function ListadoPedidos({ basePath = '/pedidos' }: { basePath?: s
     if (!vendedor) return;
     const cargar = async () => {
       try {
-        const res = await fetch(`/api/pedidos?vendedor_id=${vendedor.id}`);
+        // cache: no-store fuerza al browser a pedir fresh (server decide
+        // si sirve cache propio o consulta Baserow). Asi se ve el ultimo
+        // pedido recien creado sin esperar el TTL del edge.
+        const res = await fetch(`/api/pedidos?vendedor_id=${vendedor.id}`, { cache: 'no-store' });
         const data = await res.json();
         setPedidos(data);
       } catch {

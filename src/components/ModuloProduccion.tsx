@@ -7,8 +7,10 @@ import TabExpedicion from '@/components/produccion/TabExpedicion';
 import TabFacturacion from '@/components/produccion/TabFacturacion';
 import PlanificacionProduccion from '@/components/produccion/PlanificacionProduccion';
 import ExpedicionPorCliente from '@/components/produccion/ExpedicionPorCliente';
+import PedidosParaPreparar from '@/components/produccion/PedidosParaPreparar';
 
 type Tab =
+  | 'preparar'
   | 'por_cliente'
   | 'planificacion'
   | 'elaboracion'
@@ -21,6 +23,7 @@ type Tab =
   | 'facturacion_hist';
 
 const TABS: { key: Tab; label: string; grupo: 'op' | 'hist' }[] = [
+  { key: 'preparar', label: 'Para preparar', grupo: 'op' },
   { key: 'por_cliente', label: 'Pedidos por cliente', grupo: 'op' },
   { key: 'planificacion', label: 'Planificación', grupo: 'op' },
   { key: 'elaboracion', label: 'Elaboración', grupo: 'op' },
@@ -34,7 +37,7 @@ const TABS: { key: Tab; label: string; grupo: 'op' | 'hist' }[] = [
 ];
 
 export default function ModuloProduccion() {
-  const [tab, setTab] = useState<Tab>('por_cliente');
+  const [tab, setTab] = useState<Tab>('preparar');
 
   return (
     <div className="max-w-full mx-auto p-4 md:p-6 space-y-4">
@@ -67,6 +70,7 @@ export default function ModuloProduccion() {
       </div>
 
       <div className="pt-2">
+        {tab === 'preparar' && <PedidosParaPreparar />}
         {tab === 'por_cliente' && <ExpedicionPorCliente />}
         {tab === 'planificacion' && <PlanificacionProduccion />}
         {tab === 'elaboracion' && <TabElaboracion />}

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { Cliente, Producto, ListaPrecio, LineaPedido, AlertaPedido } from '@/types';
+import { Cliente, Producto, ListaPrecio, LineaPedido, AlertaPedido, Pedido } from '@/types';
 import { formatCurrency } from '@/lib/format';
 import { estadoCuentaDe, estadoLabel } from '@/lib/cliente';
 
@@ -29,6 +29,7 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [listaPrecio, setListaPrecio] = useState<ListaPrecio | null>(null);
+  const [pedidosVendedor, setPedidosVendedor] = useState<Pedido[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   // --- Estado del formulario ---
@@ -50,6 +51,12 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
   const comboRef = useRef<HTMLDivElement>(null);
 
   const clienteSeleccionado = clientes.find((c) => c.id === clienteId);
+
+  // Pedidos del cliente que todavia no estan finalizados (= en circuito)
+  const pedidosPendientesCliente = useMemo(() => {
+    if (!clienteId) return [];
+    return pedidosVendedor.filter(p => p.cliente_id === clienteId && p.estado !== 'finalizado');
+  }, [pedidosVendedor, clienteId]);
   const estadoCliente = clienteSeleccionado ? estadoCuentaDe(clienteSeleccionado) : null;
   const clienteBloqueado = estadoCliente === 'bloqueado';
 
@@ -107,14 +114,16 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
     if (!vendedor) return;
     const cargar = async () => {
       try {
-        const [resClientes, resProductos, resLista] = await Promise.all([
+        const [resClientes, resProductos, resLista, resPedidos] = await Promise.all([
           fetch(`/api/clientes?ids=${vendedor.clientes.join(',')}`),
           fetch('/api/productos'),
           fetch(`/api/listas-precio?id=${vendedor.lista_precio_id}`),
+          fetch(`/api/pedidos?vendedor_id=${vendedor.id}`),
         ]);
         setClientes(await resClientes.json());
         setProductos(await resProductos.json());
         setListaPrecio(await resLista.json());
+        setPedidosVendedor(await resPedidos.json());
       } catch (err) {
         console.error('Error cargando datos:', err);
       } finally {
@@ -441,6 +450,39 @@ export default function FormularioPedido({ redirectBase = '/pedidos' }: { redire
             ✓ Cliente {estadoLabel[estadoCliente]} — podés avanzar con el pedido.
           </div>
         )}
+
+        {/* Resumen rapido de la situacion del cliente */}
+        {clienteSeleccionado && (() => {
+          const saldo = clienteSeleccionado.saldo_cuenta_corriente;
+          const debe = saldo < 0; // saldo negativo = debe al cliente
+          const cantPendientes = pedidosPendientesCliente.length;
+          const sinNada = !debe && cantPendientes === 0;
+          const color = sinNada
+            ? 'bg-verde-ok-claro border-verde-ok/40 text-verde-ok'
+            : debe
+              ? 'bg-rojo-claro border-rojo/40 text-rojo'
+              : 'bg-amarillo-claro border-amarillo/40 text-amber-800';
+          return (
+            <div className={`rounded-lg border px-4 py-3 text-sm font-medium ${color}`}>
+              {sinNada ? (
+                <>✓ Sin deuda y sin pedidos pendientes.</>
+              ) : (
+                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                  {debe ? (
+                    <span>⚠ Debe <strong>{formatCurrency(Math.abs(saldo))}</strong></span>
+                  ) : saldo > 0 ? (
+                    <span>Saldo a favor: <strong>{formatCurrency(saldo)}</strong></span>
+                  ) : (
+                    <span>Sin deuda</span>
+                  )}
+                  {cantPendientes > 0 && (
+                    <span>📦 <strong>{cantPendientes}</strong> pedido{cantPendientes === 1 ? '' : 's'} pendiente{cantPendientes === 1 ? '' : 's'} (sin finalizar)</span>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Datos del cliente + dirección de entrega editable */}
         {clienteSeleccionado && (
